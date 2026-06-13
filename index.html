@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LPG Cylinder Inventory System</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="navbar-brand">LPG Hub System</div>
+            <div class="navbar-nav">
+                <button id="nav-scan-in" class="nav-btn active" onclick="showScreen('scan-in')">
+                    📥 Scan IN
+                </button>
+                <button id="nav-scan-out" class="nav-btn" onclick="showScreen('scan-out')">
+                    📤 Scan OUT
+                </button>
+                <button id="nav-inventory" class="nav-btn" onclick="showScreen('inventory')">
+                    📊 Inventory
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="container">
+            <!-- Scan IN Screen -->
+            <section id="screen-scan-in" class="screen active">
+                <div class="screen-content">
+                    <h2>📥 Scan IN - Add Cylinder</h2>
+                    
+                    <div class="form-group">
+                        <label for="scan-in-code">GLP Barcode</label>
+                        <input 
+                            type="text" 
+                            id="scan-in-code" 
+                            placeholder="Scan or enter GLP code..."
+                            autofocus
+                            class="barcode-input"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scan-in-brand">Brand</label>
+                        <select id="scan-in-brand" class="form-control">
+                            <option value="">-- Select Brand --</option>
+                            <option value="PayGo">PayGo</option>
+                            <option value="Wajiko">Wajiko</option>
+                            <option value="GreenWells">GreenWells</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scan-in-weight">Weight (kg)</label>
+                        <input 
+                            type="number" 
+                            id="scan-in-weight" 
+                            placeholder="e.g., 13, 6"
+                            class="form-control"
+                            min="0"
+                            step="0.1"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scan-in-status">Status</label>
+                        <select id="scan-in-status" class="form-control">
+                            <option value="">-- Select Status --</option>
+                            <option value="Full">🔵 Full</option>
+                            <option value="Empty">⚪ Empty</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-scan-in" class="btn btn-primary btn-lg" onclick="handleScanIn()">
+                        ✓ Register Cylinder
+                    </button>
+
+                    <div id="scan-in-message" class="message"></div>
+                </div>
+            </section>
+
+            <!-- Scan OUT Screen -->
+            <section id="screen-scan-out" class="screen">
+                <div class="screen-content">
+                    <h2>📤 Scan OUT - Remove Cylinder</h2>
+                    
+                    <div class="form-group">
+                        <label for="scan-out-code">GLP Barcode</label>
+                        <input 
+                            type="text" 
+                            id="scan-out-code" 
+                            placeholder="Scan or enter GLP code..."
+                            class="barcode-input"
+                        >
+                    </div>
+
+                    <button id="btn-scan-out-search" class="btn btn-info btn-lg" onclick="handleScanOutSearch()">
+                        🔍 Search Cylinder
+                    </button>
+
+                    <div id="scan-out-details" class="hidden">
+                        <div class="cylinder-details">
+                            <div class="detail-row">
+                                <span class="label">GLP Code:</span>
+                                <span class="value" id="scan-out-glp"></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Brand:</span>
+                                <span class="value" id="scan-out-brand"></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Weight:</span>
+                                <span class="value" id="scan-out-weight"></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Status:</span>
+                                <span class="value" id="scan-out-status"></span>
+                            </div>
+                        </div>
+                        <button id="btn-confirm-scan-out" class="btn btn-danger btn-lg" onclick="handleConfirmScanOut()">
+                            ✓ Confirm Scan OUT
+                        </button>
+                        <button class="btn btn-secondary" onclick="resetScanOut()">
+                            ✕ Cancel
+                        </button>
+                    </div>
+
+                    <div id="scan-out-message" class="message"></div>
+                </div>
+            </section>
+
+            <!-- Inventory Dashboard -->
+            <section id="screen-inventory" class="screen">
+                <div class="screen-content">
+                    <h2>📊 Inventory Dashboard</h2>
+                    
+                    <div class="inventory-controls">
+                        <input 
+                            type="text" 
+                            id="inventory-search" 
+                            placeholder="Search by GLP code..."
+                            class="search-input"
+                            onkeyup="filterInventory()"
+                        >
+                        <button class="btn btn-secondary" onclick="refreshInventory()">
+                            🔄 Refresh
+                        </button>
+                    </div>
+
+                    <div id="inventory-stats" class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-total">0</div>
+                            <div class="stat-label">Total IN</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-full">0</div>
+                            <div class="stat-label">Full</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-empty">0</div>
+                            <div class="stat-label">Empty</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-out">0</div>
+                            <div class="stat-label">Scanned OUT</div>
+                        </div>
+                    </div>
+
+                    <div id="inventory-list" class="inventory-list"></div>
+
+                    <div id="inventory-message" class="message"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Barcode Generator Modal -->
+        <div id="barcode-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <h3>Generate Barcode</h3>
+                <canvas id="barcode-canvas"></canvas>
+                <button class="btn btn-primary" onclick="downloadBarcode()">⬇ Download</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/barcode.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
