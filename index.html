@@ -11,11 +11,11 @@
     <nav class="navbar">
         <div class="navbar-brand">🔥 LPG Cylinder Hub</div>
         <div class="navbar-nav">
-            <button class="nav-btn active" onclick="switchScreen('dashboard')">📊 Dashboard</button>
-            <button class="nav-btn" onclick="switchScreen('scanIn')">📥 Scan In</button>
-            <button class="nav-btn" onclick="switchScreen('scanOut')">📤 Scan Out</button>
-            <button class="nav-btn" onclick="switchScreen('inventory')">📋 Inventory</button>
-            <button class="nav-btn" onclick="switchScreen('settings')">⚙️ Settings</button>
+            <button class="nav-btn active" data-screen="dashboard">📊 Dashboard</button>
+            <button class="nav-btn" data-screen="scanIn">📥 Scan In</button>
+            <button class="nav-btn" data-screen="scanOut">📤 Scan Out</button>
+            <button class="nav-btn" data-screen="inventory">📋 Inventory</button>
+            <button class="nav-btn" data-screen="settings">⚙️ Settings</button>
         </div>
     </nav>
 
@@ -57,9 +57,9 @@
 
                 <!-- Quick Actions -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <button class="btn btn-primary btn-lg" onclick="switchScreen('scanIn')">➕ Add Cylinder</button>
-                    <button class="btn btn-info btn-lg" onclick="switchScreen('scanOut')">➖ Remove Cylinder</button>
-                    <button class="btn btn-info btn-lg" onclick="switchScreen('inventory')">👁️ View Inventory</button>
+                    <button class="btn btn-primary btn-lg" onclick="switchScreenByName('scanIn')">➕ Add Cylinder</button>
+                    <button class="btn btn-info btn-lg" onclick="switchScreenByName('scanOut')">➖ Remove Cylinder</button>
+                    <button class="btn btn-info btn-lg" onclick="switchScreenByName('inventory')">👁️ View Inventory</button>
                     <button class="btn btn-secondary btn-lg" onclick="exportData()">📥 Export Data</button>
                 </div>
             </div>
@@ -115,7 +115,7 @@
                         <input type="text" id="scanOutCode" class="barcode-input" placeholder="Scan or enter GLP code to remove" required autofocus>
                     </div>
 
-                    <button type="submit" class="btn btn-danger btn-lg">❌ Remove Cylinder</button>
+                    <button type="submit" class="btn btn-danger btn-lg">🔍 Find Cylinder</button>
                 </form>
 
                 <!-- Cylinder Details (shown after search) -->
@@ -223,6 +223,45 @@
 
     <!-- ==================== SCRIPTS ==================== -->
     <script src="js/app.js"></script>
-    <script src="js/ui.js"></script>
+    <script>
+        // ============== FIXED SCREEN NAVIGATION ==============
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const screenId = this.getAttribute('data-screen');
+                switchScreenByName(screenId);
+            });
+        });
+
+        function switchScreenByName(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // Show selected screen
+            document.getElementById(screenId).classList.add('active');
+
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-screen="${screenId}"]`).classList.add('active');
+
+            // Update dashboard stats when switching
+            if (screenId === 'dashboard') {
+                updateDashboard();
+            }
+
+            // Refresh inventory when viewing
+            if (screenId === 'inventory') {
+                displayInventory();
+            }
+
+            // Refresh settings when viewing
+            if (screenId === 'settings') {
+                updateSettingsInfo();
+            }
+        }
+    </script>
 </body>
 </html>
