@@ -1,237 +1,196 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LPG Cylinder Inventory System</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <!-- QR Code Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-</head>
-<body>
-    <!-- ==================== NAVBAR ==================== -->
-    <nav class="navbar">
-        <div class="navbar-brand">🔥 LPG Cylinder Hub</div>
-        <div class="navbar-nav">
-            <button class="nav-btn active" data-screen="dashboard">📊 Dashboard</button>
-            <button class="nav-btn" data-screen="scanIn">📥 Scan In</button>
-            <button class="nav-btn" data-screen="scanOut">📤 Scan Out</button>
-            <button class="nav-btn" data-screen="inventory">📋 Inventory</button>
-            <button class="nav-btn" data-screen="settings">⚙️ Settings</button>
-        </div>
-    </nav>
+// ================================
+// LPG INVENTORY SYSTEM (FIXED FULL)
+// ================================
 
-    <!-- ==================== MAIN CONTAINER ==================== -->
-    <div class="container">
-        
-        <!-- ==================== DASHBOARD SCREEN ==================== -->
-        <div id="dashboard" class="screen active">
-            <div class="screen-content">
-                <h2>📊 Dashboard</h2>
-                
-                <!-- Stats Grid -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="statTotal">0</div>
-                        <div class="stat-label">Total In Stock</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statFull">0</div>
-                        <div class="stat-label">Full</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statPartial">0</div>
-                        <div class="stat-label">Partial</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statEmpty">0</div>
-                        <div class="stat-label">Empty</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statOut">0</div>
-                        <div class="stat-label">Out</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="statWeight">0</div>
-                        <div class="stat-label">Total Weight (kg)</div>
-                    </div>
-                </div>
+let cylinders = JSON.parse(localStorage.getItem("cylinders")) || [];
+let selectedCylinder = null;
 
-                <!-- Quick Actions -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <button class="btn btn-primary btn-lg" onclick="switchScreenByName('scanIn')">➕ Add Cylinder</button>
-                    <button class="btn btn-info btn-lg" onclick="switchScreenByName('scanOut')">➖ Remove Cylinder</button>
-                    <button class="btn btn-info btn-lg" onclick="switchScreenByName('inventory')">👁️ View Inventory</button>
-                    <button class="btn btn-secondary btn-lg" onclick="exportData()">📥 Export Data</button>
-                </div>
-            </div>
-        </div>
+// ================================
+// SAVE
+// ================================
+function save() {
+    localStorage.setItem("cylinders", JSON.stringify(cylinders));
+}
 
-        <!-- ==================== SCAN IN SCREEN ==================== -->
-        <div id="scanIn" class="screen">
-            <div class="screen-content">
-                <h2>📥 Scan In Cylinder</h2>
-                
-                <form onsubmit="handleScanIn(event)">
-                    <div class="form-group">
-                        <label for="glpCode">GLP Code *</label>
-                        <input type="text" id="glpCode" class="barcode-input" placeholder="Scan or enter GLP code" required autofocus>
-                    </div>
+// ================================
+// NAVIGATION
+// ================================
+document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const screen = btn.getAttribute("data-screen");
+        switchScreen(screen);
+    });
+});
 
-                    <div class="form-group">
-                        <label for="brand">Brand *</label>
-                        <input type="text" id="brand" class="form-control" placeholder="e.g., Petro-Gas, Shell LPG" required>
-                    </div>
+function switchScreen(screen) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(screen).classList.add("active");
 
-                    <div class="form-group">
-                        <label for="weight">Weight (kg) *</label>
-                        <input type="number" id="weight" class="form-control" placeholder="e.g., 12.5" step="0.1" min="0" required>
-                    </div>
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+    document.querySelector(`[data-screen="${screen}"]`).classList.add("active");
 
-                    <div class="form-group">
-                        <label for="status">Status *</label>
-                        <select id="status" class="form-control" required>
-                            <option value="">-- Select Status --</option>
-                            <option value="Full">Full</option>
-                            <option value="Partial">Partial</option>
-                            <option value="Empty">Empty</option>
-                        </select>
-                    </div>
+    if (screen === "dashboard") updateDashboard();
+    if (screen === "inventory") displayInventory();
+    if (screen === "settings") updateSettings();
+}
 
-                    <button type="submit" class="btn btn-primary btn-lg">✅ Add Cylinder</button>
-                    <button type="reset" class="btn btn-secondary btn-lg">🔄 Clear Form</button>
-                </form>
+// ================================
+// SCAN IN
+// ================================
+function handleScanIn(e) {
+    e.preventDefault();
 
-                <div id="scanInMessage" class="message"></div>
-            </div>
-        </div>
+    const glp = document.getElementById("glpCode").value.trim();
+    const brand = document.getElementById("brand").value.trim();
+    const weight = document.getElementById("weight").value.trim();
+    const status = document.getElementById("status").value;
 
-        <!-- ==================== SCAN OUT SCREEN ==================== -->
-        <div id="scanOut" class="screen">
-            <div class="screen-content">
-                <h2>📤 Scan Out Cylinder</h2>
-                
-                <form onsubmit="handleScanOut(event)">
-                    <div class="form-group">
-                        <label for="scanOutCode">GLP Code *</label>
-                        <input type="text" id="scanOutCode" class="barcode-input" placeholder="Scan or enter GLP code to remove" required autofocus>
-                    </div>
+    if (!glp || !brand || !weight || !status) {
+        alert("Fill all fields");
+        return;
+    }
 
-                    <button type="submit" class="btn btn-danger btn-lg">🔍 Find Cylinder</button>
-                </form>
+    const exists = cylinders.find(c => c.glp === glp && c.state === "IN");
+    if (exists) {
+        alert("Already exists");
+        return;
+    }
 
-                <!-- Cylinder Details (shown after search) -->
-                <div id="cylinderDetails" class="hidden">
-                    <div class="cylinder-details">
-                        <div class="detail-row">
-                            <span class="label">GLP Code:</span>
-                            <span class="value" id="detailCode"></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">Brand:</span>
-                            <span class="value" id="detailBrand"></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">Weight:</span>
-                            <span class="value" id="detailWeight"></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">Status:</span>
-                            <span class="value" id="detailStatus"></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">Added:</span>
-                            <span class="value" id="detailDate"></span>
-                        </div>
-                    </div>
+    cylinders.push({
+        glp,
+        brand,
+        weight,
+        status,
+        state: "IN",
+        date: new Date().toISOString()
+    });
 
-                    <button class="btn btn-danger btn-lg" onclick="confirmScanOut()">✅ Confirm Removal</button>
-                    <button class="btn btn-secondary btn-lg" onclick="cancelScanOut()">❌ Cancel</button>
-                </div>
+    save();
 
-                <div id="scanOutMessage" class="message"></div>
-            </div>
-        </div>
+    e.target.reset();
+    updateDashboard();
+    displayInventory();
+}
 
-        <!-- ==================== INVENTORY SCREEN ==================== -->
-        <div id="inventory" class="screen">
-            <div class="screen-content">
-                <h2>📋 Inventory</h2>
+// ================================
+// SCAN OUT SEARCH
+// ================================
+function handleScanOut(e) {
+    e.preventDefault();
 
-                <!-- Search & Filter -->
-                <div class="inventory-controls">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search by code or brand..." oninput="handleSearch()">
-                    <select id="filterStatus" class="form-control" style="flex: 0.5; max-width: 150px;" onchange="handleSearch()">
-                        <option value="">All Status</option>
-                        <option value="Full">Full</option>
-                        <option value="Partial">Partial</option>
-                        <option value="Empty">Empty</option>
-                    </select>
-                </div>
+    const code = document.getElementById("scanOutCode").value.trim();
 
-                <!-- Inventory List -->
-                <div id="inventoryList" class="inventory-list">
-                    <p style="text-align: center; color: #999; grid-column: 1/-1;">No cylinders in inventory</p>
-                </div>
+    selectedCylinder = cylinders.find(c => c.glp === code && c.state === "IN");
 
-                <div id="inventoryMessage" class="message"></div>
-            </div>
-        </div>
+    if (!selectedCylinder) {
+        alert("Not found");
+        return;
+    }
 
-        <!-- ==================== SETTINGS SCREEN ==================== -->
-        <div id="settings" class="screen">
-            <div class="screen-content">
-                <h2>⚙️ Settings & Data Management</h2>
+    document.getElementById("detailCode").textContent = selectedCylinder.glp;
+    document.getElementById("detailBrand").textContent = selectedCylinder.brand;
+    document.getElementById("detailWeight").textContent = selectedCylinder.weight;
+    document.getElementById("detailStatus").textContent = selectedCylinder.status;
+    document.getElementById("detailDate").textContent = new Date(selectedCylinder.date).toLocaleString();
 
-                <!-- Data Stats -->
-                <div class="cylinder-details" style="margin-bottom: 2rem;">
-                    <div class="detail-row">
-                        <span class="label">Total Records:</span>
-                        <span class="value" id="totalRecords">0</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">In Inventory:</span>
-                        <span class="value" id="inInventoryCount">0</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">Scanned Out:</span>
-                        <span class="value" id="outCount">0</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="label">Storage Used:</span>
-                        <span class="value" id="storageUsed">0 KB</span>
-                    </div>
-                </div>
+    document.getElementById("cylinderDetails").classList.remove("hidden");
+}
 
-                <!-- Actions -->
-                <div style="display: grid; gap: 1rem;">
-                    <div>
-                        <label>Archive Records Older Than (days):</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <input type="number" id="archiveDays" class="form-control" value="30" min="1">
-                            <button class="btn btn-info" onclick="archiveRecords()">🗑️ Archive</button>
-                        </div>
-                    </div>
+// ================================
+// CONFIRM SCAN OUT
+// ================================
+function confirmScanOut() {
+    if (!selectedCylinder) return;
 
-                    <button class="btn btn-primary btn-lg" onclick="exportData()">📥 Export All Data (JSON)</button>
-                    <button class="btn btn-secondary btn-lg" onclick="downloadCSV()">📊 Export as CSV</button>
-                    <button class="btn btn-danger btn-lg" onclick="clearAllData()">🗑️ Clear All Data</button>
-                </div>
+    selectedCylinder.state = "OUT";
+    selectedCylinder.outDate = new Date().toISOString();
 
-                <div id="settingsMessage" class="message"></div>
-            </div>
-        </div>
-    </div>
+    save();
 
-    <!-- ==================== SCRIPTS ==================== -->
-    <script src="js/app.js"></script>
-    <script>
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const screenId = this.getAttribute('data-screen');
-                switchScreenByName(screenId);
-            });
-        });
-    </script>
-</body>
-</html>
+    cancelScanOut();
+    updateDashboard();
+    displayInventory();
+}
+
+// ================================
+// CANCEL SCAN OUT
+// ================================
+function cancelScanOut() {
+    selectedCylinder = null;
+    document.getElementById("scanOutCode").value = "";
+    document.getElementById("cylinderDetails").classList.add("hidden");
+}
+
+// ================================
+// INVENTORY
+// ================================
+function displayInventory() {
+    const list = document.getElementById("inventoryList");
+    list.innerHTML = "";
+
+    const inStock = cylinders.filter(c => c.state === "IN");
+
+    if (inStock.length === 0) {
+        list.innerHTML = "<p>No cylinders</p>";
+        return;
+    }
+
+    inStock.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "cylinder-card";
+        div.innerHTML = `
+            <h4>${c.glp}</h4>
+            <p>${c.brand}</p>
+            <p>${c.weight} kg</p>
+            <p>${c.status}</p>
+            <button onclick="quickOut('${c.glp}')">Scan Out</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+// ================================
+// QUICK SCAN OUT
+// ================================
+function quickOut(glp) {
+    switchScreen("scanOut");
+    document.getElementById("scanOutCode").value = glp;
+    selectedCylinder = cylinders.find(c => c.glp === glp);
+    handleScanOut(new Event("submit"));
+}
+
+// ================================
+// DASHBOARD
+// ================================
+function updateDashboard() {
+    const inStock = cylinders.filter(c => c.state === "IN");
+
+    document.getElementById("statTotal").textContent = inStock.length;
+    document.getElementById("statFull").textContent = inStock.filter(c => c.status === "Full").length;
+    document.getElementById("statPartial").textContent = inStock.filter(c => c.status === "Partial").length;
+    document.getElementById("statEmpty").textContent = inStock.filter(c => c.status === "Empty").length;
+    document.getElementById("statOut").textContent = cylinders.filter(c => c.state === "OUT").length;
+}
+
+// ================================
+// SETTINGS
+// ================================
+function updateSettings() {
+    document.getElementById("totalRecords").textContent = cylinders.length;
+    document.getElementById("inInventoryCount").textContent = cylinders.filter(c => c.state === "IN").length;
+    document.getElementById("outCount").textContent = cylinders.filter(c => c.state === "OUT").length;
+
+    const size = new Blob([JSON.stringify(cylinders)]).size;
+    document.getElementById("storageUsed").textContent = (size / 1024).toFixed(2) + " KB";
+}
+
+// ================================
+// EXPORT
+// ================================
+function exportData() {
+    const blob = new Blob([JSON.stringify(cylinders, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "lpg-data.json";
+    a.click();
+}
