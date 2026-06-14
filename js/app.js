@@ -1,41 +1,56 @@
-// ===============================
-// LPG CYLINDER INVENTORY APP (FIXED)
-// ===============================
+// ================================
+// LPG HUB SYSTEM - FIXED APP JS
+// ================================
 
 let currentScanOutCylinder = null;
 
 // -------------------------------
-// SCREEN NAVIGATION
+// NAVIGATION (FIXED)
 // -------------------------------
 function showScreen(screenName) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const screens = document.querySelectorAll('.screen');
+    const buttons = document.querySelectorAll('.nav-btn');
 
-    document.getElementById(`screen-${screenName}`).classList.add('active');
-    document.getElementById(`nav-${screenName}`).classList.add('active');
+    screens.forEach(s => s.classList.remove('active'));
+    buttons.forEach(b => b.classList.remove('active'));
 
+    const targetScreen = document.getElementById(`screen-${screenName}`);
+    const targetBtn = document.getElementById(`nav-${screenName}`);
+
+    if (targetScreen) targetScreen.classList.add('active');
+    if (targetBtn) targetBtn.classList.add('active');
+
+    // Auto focus inputs
     setTimeout(() => {
         if (screenName === 'scan-in') {
-            document.getElementById('scan-in-code').focus();
-        } else if (screenName === 'scan-out') {
-            document.getElementById('scan-out-code').focus();
+            document.getElementById('scan-in-code')?.focus();
         }
-    }, 100);
+        if (screenName === 'scan-out') {
+            document.getElementById('scan-out-code')?.focus();
+        }
+        if (screenName === 'inventory') {
+            refreshInventory();
+        }
+    }, 200);
 }
 
 // -------------------------------
-// MESSAGE HANDLER
+// MESSAGE SYSTEM
 // -------------------------------
-function showMessage(id, message, type = 'info') {
+function showMessage(id, msg, type = 'info') {
     const el = document.getElementById(id);
-    el.textContent = message;
+    if (!el) return;
+
+    el.textContent = msg;
     el.className = `message show ${type}`;
 
-    setTimeout(() => el.classList.remove('show'), 4000);
+    setTimeout(() => {
+        el.classList.remove('show');
+    }, 4000);
 }
 
 // ===============================
-// SCAN IN
+// SCAN IN (WORKING)
 // ===============================
 function handleScanIn() {
     const code = document.getElementById('scan-in-code').value.trim();
@@ -43,14 +58,13 @@ function handleScanIn() {
     const weight = document.getElementById('scan-in-weight').value;
     const status = document.getElementById('scan-in-status').value;
 
-    if (!code || !code.startsWith("GLP")) {
-        showMessage('scan-in-message', 'Code must start with GLP', 'error');
-        return;
+    // STRICT VALIDATION (GLP ONLY RULE)
+    if (!code.startsWith('GLP')) {
+        return showMessage('scan-in-message', 'Only GLP cylinders allowed!', 'error');
     }
 
-    if (!brand || !weight || !status) {
-        showMessage('scan-in-message', 'Fill all fields', 'error');
-        return;
+    if (!code || !brand || !weight || !status) {
+        return showMessage('scan-in-message', 'Fill all fields', 'error');
     }
 
     const result = db.addCylinder(code, brand, weight, status);
@@ -62,50 +76,56 @@ function handleScanIn() {
         document.getElementById('scan-in-weight').value = '';
         document.getElementById('scan-in-brand').value = '';
         document.getElementById('scan-in-status').value = '';
+
+        updateInventoryStats();
     } else {
         showMessage('scan-in-message', result.message, 'error');
     }
 }
 
 // ===============================
-// SCAN OUT
+// SCAN OUT (FIXED)
 // ===============================
 function handleScanOutSearch() {
     const code = document.getElementById('scan-out-code').value.trim();
 
     if (!code) {
-        showMessage('scan-out-message', 'Enter GLP code', 'error');
-        return;
+        return showMessage('scan-out-message', 'Enter GLP code', 'error');
     }
 
-    const result = db.scanOutCylinder(code);
+    const result = db.findCylinder(code);
 
-    if (result.success) {
-        currentScanOutCylinder = result.cylinder;
-        displayScanOutDetails(result.cylinder);
-        showMessage('scan-out-message', 'Cylinder found', 'info');
-    } else {
-        showMessage('scan-out-message', result.message, 'error');
+    if (!result.success) {
+        return showMessage('scan-out-message', 'Cylinder not found', 'error');
     }
-}
 
-function displayScanOutDetails(c) {
-    document.getElementById('scan-out-glp').textContent = c.glp_code;
-    document.getElementById('scan-out-brand').textContent = c.brand;
-    document.getElementById('scan-out-weight').textContent = c.weight;
-    document.getElementById('scan-out-status').textContent = c.status;
+    currentScanOutCylinder = result.cylinder;
+
+    document.getElementById('scan-out-glp').textContent = result.cylinder.glp_code;
+    document.getElementById('scan-out-brand').textContent = result.cylinder.brand;
+    document.getElementById('scan-out-weight').textContent = result.cylinder.weight;
+    document.getElementById('scan-out-status').textContent = result.cylinder.status;
+
     document.getElementById('scan-out-details').classList.remove('hidden');
+
+    showMessage('scan-out-message', 'Cylinder loaded', 'info');
 }
 
 function handleConfirmScanOut() {
-    if (!currentScanOutCylinder) return;
+    if (!currentScanOutCylinder) {
+        return showMessage('scan-out-message', 'No cylinder selected', 'error');
+    }
 
-    const result = db.confirmScanOut(currentScanOutCylinder.glp_code);
+    const result = db.removeCylinder(currentScanOutCylinder.glp_code);
 
     if (result.success) {
-        showMessage('scan-out-message', 'Scanned OUT successfully', 'success');
+        showMessage('scan-out-message', 'Cylinder removed successfully', 'success');
+
         resetScanOut();
+        updateInventoryStats();
         displayInventory();
+    } else {
+        showMessage('scan-out-message', result.message, 'error');
     }
 }
 
@@ -116,83 +136,55 @@ function resetScanOut() {
 }
 
 // ===============================
-// INVENTORY
+// INVENTORY (FIXED)
 // ===============================
 function displayInventory() {
-    const grouped = db.getGroupedInventory();
-    const container = document.getElementById('inventory-list');
+    const list = document.getElementById('inventory-list');
+    const data = db.getAll();
 
-    container.innerHTML = '';
+    list.innerHTML = '';
 
-    const brands = ['PayGo', 'Wajiko', 'GreenWells'];
+    if (!data.length) {
+        list.innerHTML = `<p style="text-align:center;">No cylinders found</p>`;
+        return;
+    }
 
-    brands.forEach(brand => {
-        if (!grouped[brand]) return;
+    data.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'cylinder-card';
 
-        const section = document.createElement('div');
-        section.className = 'brand-section';
+        div.innerHTML = `
+            <div><b>${c.glp_code}</b></div>
+            <div>Brand: ${c.brand}</div>
+            <div>Weight: ${c.weight}</div>
+            <div>Status: ${c.status}</div>
+        `;
 
-        section.innerHTML = `<h3>${brand}</h3>`;
-
-        ['Full', 'Empty'].forEach(status => {
-            if (!grouped[brand][status] || grouped[brand][status].length === 0) return;
-
-            const group = document.createElement('div');
-            group.innerHTML = `<h4>${status}</h4>`;
-
-            grouped[brand][status].forEach(c => {
-                const card = document.createElement('div');
-                card.className = 'cylinder-card';
-
-                card.innerHTML = `
-                    <div class="cylinder-code">${c.glp_code}</div>
-                    <div>Brand: ${c.brand}</div>
-                    <div>Weight: ${c.weight} kg</div>
-                    <div>Status: ${c.status}</div>
-                    <canvas class="qr"></canvas>
-                    <button onclick="scanOutFromInventory('${c.glp_code}')">
-                        📤 Scan Out
-                    </button>
-                `;
-
-                group.appendChild(card);
-
-                // REAL QR GENERATION (FIX)
-                const canvas = card.querySelector('.qr');
-
-                QRCode.toCanvas(canvas, c.glp_code, {
-                    width: 120,
-                    margin: 1
-                });
-            });
-
-            section.appendChild(group);
-        });
-
-        container.appendChild(section);
+        list.appendChild(div);
     });
 }
 
-// -------------------------------
-// INVENTORY ACTION
-// -------------------------------
-function scanOutFromInventory(code) {
-    showScreen('scan-out');
-    document.getElementById('scan-out-code').value = code;
-    handleScanOutSearch();
-}
-
-// -------------------------------
-// REFRESH
-// -------------------------------
 function refreshInventory() {
+    updateInventoryStats();
     displayInventory();
-    showMessage('inventory-message', 'Inventory updated', 'success');
 }
 
-// -------------------------------
-// INIT
-// -------------------------------
+// ===============================
+// STATS
+// ===============================
+function updateInventoryStats() {
+    const stats = db.getStats();
+
+    document.getElementById('stat-total').textContent = stats.total || 0;
+    document.getElementById('stat-full').textContent = stats.full || 0;
+    document.getElementById('stat-empty').textContent = stats.empty || 0;
+    document.getElementById('stat-out').textContent = stats.out || 0;
+}
+
+// ===============================
+// INIT (IMPORTANT FIX)
+// ===============================
 document.addEventListener('DOMContentLoaded', () => {
     showScreen('scan-in');
+    updateInventoryStats();
 });
