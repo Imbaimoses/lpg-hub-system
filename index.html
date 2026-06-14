@@ -175,19 +175,10 @@
             </section>
         </main>
 
-        <!-- Barcode Generator Modal -->
-        <div id="barcode-modal" class="modal hidden">
-            <div class="modal-content">
-                <button class="modal-close" onclick="closeModal()">✕</button>
-                <h3>Generate Barcode</h3>
-                <canvas id="barcode-canvas"></canvas>
-                <button class="btn btn-primary" onclick="downloadBarcode()">⬇ Download</button>
-            </div>
-        </div>
-    </div>
+      <script src="js/db.js"></script>
 
-    <script src="js/db.js"></script>
-    <script src="js/barcode.js"></script>
-    <script src="js/app.js"></script>
-</body>
-</html>
+<!-- QR CODE LIBRARY (IMPORTANT) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+<script src="js/barcode.js"></script>
+<script src="js/app.js"></script>
