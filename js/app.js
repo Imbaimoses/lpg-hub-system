@@ -1,101 +1,138 @@
-// ================================
-// SIMPLE LPG DATABASE (FIXED)
-// ================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LPG Cylinder Inventory System</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
 
-class Database {
-    constructor() {
-        this.storageKey = "lpg_cylinders";
-        this.data = JSON.parse(localStorage.getItem(this.storageKey)) || [];
-    }
+<body>
+<div id="app">
 
-    save() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-    }
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-brand">LPG Hub System</div>
 
-    // ---------------------------
-    // ADD CYLINDER (SCAN IN)
-    // ---------------------------
-    addCylinder(glp_code, brand, weight, status) {
-        const exists = this.data.find(c => c.glp_code === glp_code && c.state === "IN");
+        <div class="navbar-nav">
+            <button id="nav-scan-in" class="nav-btn active" onclick="showScreen('scan-in')">
+                📥 Scan IN
+            </button>
 
-        if (exists) {
-            return { success: false, message: "Cylinder already exists in inventory" };
-        }
+            <button id="nav-scan-out" class="nav-btn" onclick="showScreen('scan-out')">
+                📤 Scan OUT
+            </button>
 
-        const cylinder = {
-            glp_code,
-            brand,
-            weight,
-            status,
-            state: "IN",
-            timestamp: new Date().toISOString()
-        };
+            <button id="nav-inventory" class="nav-btn" onclick="showScreen('inventory')">
+                📊 Inventory
+            </button>
+        </div>
+    </nav>
 
-        this.data.push(cylinder);
-        this.save();
+    <!-- MAIN -->
+    <main class="container">
 
-        return { success: true, message: "Cylinder added successfully" };
-    }
+        <!-- SCAN IN -->
+        <section id="screen-scan-in" class="screen active">
+            <div class="screen-content">
+                <h2>📥 Scan IN</h2>
 
-    // ---------------------------
-    // FIND CYLINDER (SCAN OUT SEARCH)
-    // ---------------------------
-    findCylinder(glp_code) {
-        const cylinder = this.data.find(c => c.glp_code === glp_code && c.state === "IN");
+                <input id="scan-in-code" class="barcode-input" placeholder="GLP Code">
 
-        if (!cylinder) {
-            return { success: false };
-        }
+                <select id="scan-in-brand" class="form-control">
+                    <option value="">Select Brand</option>
+                    <option>PayGo</option>
+                    <option>Wajiko</option>
+                    <option>GreenWells</option>
+                </select>
 
-        return { success: true, cylinder };
-    }
+                <input id="scan-in-weight" class="form-control" placeholder="Weight (kg)">
 
-    // ---------------------------
-    // REMOVE CYLINDER (SCAN OUT CONFIRM)
-    // ---------------------------
-    removeCylinder(glp_code) {
-        const index = this.data.findIndex(c => c.glp_code === glp_code && c.state === "IN");
+                <select id="scan-in-status" class="form-control">
+                    <option value="">Select Status</option>
+                    <option value="Full">Full</option>
+                    <option value="Empty">Empty</option>
+                </select>
 
-        if (index === -1) {
-            return { success: false, message: "Cylinder not found or already removed" };
-        }
+                <button class="btn btn-primary btn-lg" onclick="handleScanIn()">
+                    Register Cylinder
+                </button>
 
-        this.data[index].state = "OUT";
-        this.data[index].outTime = new Date().toISOString();
+                <div id="scan-in-message" class="message"></div>
+            </div>
+        </section>
 
-        this.save();
+        <!-- SCAN OUT -->
+        <section id="screen-scan-out" class="screen">
+            <div class="screen-content">
+                <h2>📤 Scan OUT</h2>
 
-        return { success: true, message: "Cylinder scanned OUT" };
-    }
+                <input id="scan-out-code" class="barcode-input" placeholder="GLP Code">
 
-    // ---------------------------
-    // GET ALL IN INVENTORY
-    // ---------------------------
-    getAll() {
-        return this.data.filter(c => c.state === "IN");
-    }
+                <button class="btn btn-info btn-lg" onclick="handleScanOutSearch()">
+                    Search
+                </button>
 
-    // ---------------------------
-    // STATS
-    // ---------------------------
-    getStats() {
-        const total = this.data.filter(c => c.state === "IN").length;
-        const full = this.data.filter(c => c.state === "IN" && c.status === "Full").length;
-        const empty = this.data.filter(c => c.state === "IN" && c.status === "Empty").length;
-        const out = this.data.filter(c => c.state === "OUT").length;
+                <div id="scan-out-details" class="hidden">
+                    <p id="scan-out-glp"></p>
+                    <p id="scan-out-brand"></p>
+                    <p id="scan-out-weight"></p>
+                    <p id="scan-out-status"></p>
 
-        return { total, full, empty, out };
-    }
+                    <button class="btn btn-danger" onclick="handleConfirmScanOut()">
+                        Confirm OUT
+                    </button>
+                </div>
 
-    // ---------------------------
-    // SEARCH
-    // ---------------------------
-    search(query) {
-        return this.data.filter(c =>
-            c.glp_code.includes(query) && c.state === "IN"
-        );
-    }
-}
+                <div id="scan-out-message" class="message"></div>
+            </div>
+        </section>
 
-// GLOBAL DB INSTANCE
-const db = new Database();
+        <!-- INVENTORY -->
+        <section id="screen-inventory" class="screen">
+            <div class="screen-content">
+                <h2>📊 Inventory</h2>
+
+                <input id="inventory-search" class="search-input" placeholder="Search GLP..." onkeyup="filterInventory()">
+
+                <button class="btn btn-secondary" onclick="refreshInventory()">
+                    Refresh
+                </button>
+
+                <!-- STATS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div id="stat-total">0</div>
+                        <div>Total</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div id="stat-full">0</div>
+                        <div>Full</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div id="stat-empty">0</div>
+                        <div>Empty</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div id="stat-out">0</div>
+                        <div>Out</div>
+                    </div>
+                </div>
+
+                <div id="inventory-list"></div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- SCRIPTS (ORDER IS VERY IMPORTANT) -->
+<script src="js/db.js"></script>
+<script src="js/barcode.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
