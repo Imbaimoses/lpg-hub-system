@@ -31,8 +31,8 @@ function switchScreenByName(screenName) {
     });
 
     // Refresh screen-specific data
-    if (screenName === 'inventory') {
-        displayInventory();
+    if (screenName === 'qrcodes') {
+        displayCylindersWithQR();
     } else if (screenName === 'dashboard') {
         updateDashboard();
     } else if (screenName === 'settings') {
@@ -132,60 +132,98 @@ function cancelScanOut() {
     currentCylinderForRemoval = null;
 }
 
-// ==================== INVENTORY ====================
-function displayInventory() {
-    const searchInput = document.getElementById('searchInput').value;
-    const filterStatus = document.getElementById('filterStatus').value;
-
-    let cylinders;
-
-    if (searchInput) {
-        cylinders = db.search(searchInput);
-    } else {
-        cylinders = db.getAll();
-    }
-
-    // Apply status filter
-    if (filterStatus) {
-        cylinders = cylinders.filter(c => c.status === filterStatus);
-    }
-
-    const inventoryList = document.getElementById('inventoryList');
-
+// ==================== QR CODES DISPLAY ====================
+function displayCylindersWithQR() {
+    const container = document.getElementById('qrCodeDisplay');
+    if (!container) return;
+    
+    container.innerHTML = ''; // Clear previous
+    const cylinders = db.getAll();
+    
     if (cylinders.length === 0) {
-        inventoryList.innerHTML = '<p style="text-align: center; color: #999; grid-column: 1/-1;">No cylinders found</p>';
+        container.innerHTML = '<p style="text-align: center; color: #999; width: 100%;">No cylinders in inventory</p>';
+        return;
+    }
+    
+    cylinders.forEach((cylinder, index) => {
+        const qr = generateCylinderQR(cylinder.glp_code, cylinder.weight, index + 1);
+        container.appendChild(qr);
+    });
+}
+
+function printQRCodes() {
+    const printWindow = window.open('', '', 'height=600,width=800');
+    const container = document.getElementById('qrCodeDisplay');
+    
+    if (!container || db.getAll().length === 0) {
+        alert('No cylinders to print');
         return;
     }
 
-    inventoryList.innerHTML = cylinders.map(cylinder => `
-        <div class="inventory-item">
-            <div class="inventory-item-header">
-                <strong>${cylinder.glp_code}</strong>
-                <span class="status-badge status-${cylinder.status.toLowerCase()}">${cylinder.status}</span>
-            </div>
-            <div class="inventory-item-details">
-                <p><strong>Brand:</strong> ${cylinder.brand}</p>
-                <p><strong>Weight:</strong> ${cylinder.weight} kg</p>
-                <p><strong>Added:</strong> ${new Date(cylinder.timestamp).toLocaleString()}</p>
-            </div>
-            <button class="btn btn-sm btn-danger" onclick="removeFromInventoryUI('${cylinder.glp_code}')">Remove</button>
-        </div>
-    `).join('');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>LPG Cylinder QR Codes</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    .qr-item { display: inline-block; margin: 10px; padding: 15px; border: 1px solid #ccc; }
+                    .qr-info { text-align: center; margin-bottom: 10px; }
+                </style>
+            </head>
+            <body>
+                <h1>LPG Cylinder QR Codes</h1>
+                <p>Generated: ${new Date().toLocaleString()}</p>
+                ${container.innerHTML}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
 }
 
-function handleSearch() {
-    displayInventory();
-}
-
-function removeFromInventoryUI(glpCode) {
-    if (confirm(`Remove cylinder ${glpCode}?`)) {
-        const result = db.removeCylinder(glpCode);
-        showMessage('inventoryMessage', result.success, result.message);
-        if (result.success) {
-            displayInventory();
-            updateDashboard();
-        }
+function downloadQRCodes() {
+    const container = document.getElementById('qrCodeDisplay');
+    
+    if (!container || db.getAll().length === 0) {
+        alert('No cylinders to download');
+        return;
     }
+
+    const html = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>LPG Cylinder QR Codes</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
+                    .qr-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+                    .qr-item { background: white; padding: 15px; border: 2px solid #333; border-radius: 8px; }
+                    .qr-info { text-align: center; margin-bottom: 10px; font-weight: bold; }
+                    h1 { text-align: center; }
+                </style>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+            </head>
+            <body>
+                <h1>LPG Cylinder QR Codes</h1>
+                <p style="text-align: center;">Generated: ${new Date().toLocaleString()}</p>
+                <div class="qr-container">
+                    ${container.innerHTML}
+                </div>
+            </body>
+        </html>
+    `;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'lpg_qr_codes.html';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showMessage('qrMessage', true, 'QR codes downloaded successfully!');
 }
 
 // ==================== SETTINGS & DATA MANAGEMENT ====================
@@ -249,13 +287,15 @@ function clearAllData() {
     if (result.success) {
         updateDashboard();
         updateSettings();
-        displayInventory();
+        displayCylindersWithQR();
     }
 }
 
 // ==================== UTILITY FUNCTIONS ====================
 function showMessage(elementId, isSuccess, message) {
     const element = document.getElementById(elementId);
+    if (!element) return;
+    
     element.textContent = message;
     element.className = 'message ' + (isSuccess ? 'message-success' : 'message-error');
     element.style.display = 'block';
