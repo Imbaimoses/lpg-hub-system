@@ -1,113 +1,50 @@
-// ================================
-// REAL QR + BARCODE GENERATOR
-// Works with qrcode library CDN
-// ================================
+```
+// Barcode + QR Code Generator (CLEAN FIX)
 
 class BarcodeGenerator {
 
-    // ----------------------------
-    // GENERATE QR CODE IN CANVAS
-    // ----------------------------
-    static generateQRCode(text, canvasId = "barcode-canvas") {
-
-        return new Promise((resolve, reject) => {
-
-            const canvas = document.getElementById(canvasId);
-
-            if (!canvas) {
-                reject("Canvas not found");
-                return;
-            }
-
-            QRCode.toCanvas(
-                canvas,
-                text,
-                {
-                    width: 250,
-                    margin: 2,
-                    color: {
-                        dark: "#000000",
-                        light: "#ffffff"
-                    }
-                },
-                function (error) {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(canvas);
-                    }
-                }
-            );
-        });
-    }
-
-    // ----------------------------
-    // GENERATE GLP CODE
-    // ----------------------------
+    // Generate GLP code (safe format)
     static generateGLPCode() {
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let code = 'GLP';
 
-        const prefix = "GLP";
-        const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-        let code = prefix;
-
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 9; i++) {
             code += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 
         return code;
     }
 
-    // ----------------------------
-    // SHOW QR MODAL
-    // ----------------------------
-    static async showQRCode(text) {
+    // Generate QR Code (REAL one using QRCode library)
+    static generateQRCode(canvas, glpCode) {
+        if (!canvas || !glpCode) return;
 
-        const modal = document.getElementById("barcode-modal");
-
-        if (!modal) return;
-
-        modal.classList.add("show");
-
-        try {
-            await this.generateQRCode(text);
-        } catch (err) {
-            console.error("QR Error:", err);
-            alert("Failed to generate QR code");
-        }
-    }
-
-    // ----------------------------
-    // DOWNLOAD QR IMAGE
-    // ----------------------------
-    static downloadBarcode(text) {
-
-        const canvas = document.getElementById("barcode-canvas");
-
-        if (!canvas) return;
-
-        const link = document.createElement("a");
-
-        link.download = `LPG_${text}.png`;
-        link.href = canvas.toDataURL("image/png");
-
-        link.click();
-    }
-
-    // ----------------------------
-    // GENERATE FOR CYLINDER
-    // ----------------------------
-    static generateForCylinder(cylinder) {
-
-        const data = JSON.stringify({
-            code: cylinder.glp_code,
-            brand: cylinder.brand,
-            weight: cylinder.weight,
-            status: cylinder.status,
-            time: new Date().toISOString()
+        QRCode.toCanvas(canvas, glpCode, {
+            width: 120,
+            margin: 1,
+            color: {
+                dark: "#000000",
+                light: "#ffffff"
+            }
+        }, function (error) {
+            if (error) {
+                console.error("QR generation error:", error);
+            }
         });
-
-        return this.showQRCode(data);
     }
 
+    // Download QR Code
+    static downloadQRCode(glpCode) {
+        const canvas = document.createElement("canvas");
+
+        QRCode.toCanvas(canvas, glpCode, function (err) {
+            if (err) return console.error(err);
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL("image/png");
+            link.download = `GLP_${glpCode}.png`;
+            link.click();
+        });
+    }
 }
+```
