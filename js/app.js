@@ -1,138 +1,200 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LPG Cylinder Inventory System</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
+// ================================
+// LPG INVENTORY APP (FIXED)
+// ================================
 
-<body>
-<div id="app">
+let currentScanOutCylinder = null;
 
-    <!-- NAVBAR -->
-    <nav class="navbar">
-        <div class="navbar-brand">LPG Hub System</div>
+// -------------------------------
+// NAVIGATION
+// -------------------------------
+function showScreen(screen) {
 
-        <div class="navbar-nav">
-            <button id="nav-scan-in" class="nav-btn active" onclick="showScreen('scan-in')">
-                📥 Scan IN
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+
+    document.getElementById("screen-" + screen).classList.add("active");
+    document.getElementById("nav-" + screen).classList.add("active");
+
+    if (screen === "inventory") {
+        refreshInventory();
+    }
+}
+
+// -------------------------------
+// MESSAGE
+// -------------------------------
+function showMessage(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = "message show " + type;
+
+    setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+// ===============================
+// SCAN IN
+// ===============================
+function handleScanIn() {
+
+    const code = document.getElementById("scan-in-code").value.trim();
+    const brand = document.getElementById("scan-in-brand").value;
+    const weight = document.getElementById("scan-in-weight").value;
+    const status = document.getElementById("scan-in-status").value;
+
+    if (!code || !brand || !weight || !status) {
+        showMessage("scan-in-message", "Fill all fields", "error");
+        return;
+    }
+
+    const result = db.addCylinder(code, brand, weight, status);
+
+    if (result.success) {
+        showMessage("scan-in-message", result.message, "success");
+
+        document.getElementById("scan-in-code").value = "";
+        document.getElementById("scan-in-brand").value = "";
+        document.getElementById("scan-in-weight").value = "";
+        document.getElementById("scan-in-status").value = "";
+
+    } else {
+        showMessage("scan-in-message", result.message, "error");
+    }
+}
+
+// ===============================
+// SCAN OUT
+// ===============================
+function handleScanOutSearch() {
+
+    const code = document.getElementById("scan-out-code").value.trim();
+
+    const result = db.findCylinder(code);
+
+    if (!result.success) {
+        showMessage("scan-out-message", "Cylinder not found", "error");
+        document.getElementById("scan-out-details").classList.add("hidden");
+        return;
+    }
+
+    currentScanOutCylinder = result.cylinder;
+
+    document.getElementById("scan-out-glp").textContent = result.cylinder.glp_code;
+    document.getElementById("scan-out-brand").textContent = result.cylinder.brand;
+    document.getElementById("scan-out-weight").textContent = result.cylinder.weight;
+    document.getElementById("scan-out-status").textContent = result.cylinder.status;
+
+    document.getElementById("scan-out-details").classList.remove("hidden");
+}
+
+function handleConfirmScanOut() {
+
+    if (!currentScanOutCylinder) {
+        showMessage("scan-out-message", "No cylinder selected", "error");
+        return;
+    }
+
+    const result = db.removeCylinder(currentScanOutCylinder.glp_code);
+
+    if (result.success) {
+        showMessage("scan-out-message", result.message, "success");
+
+        resetScanOut();
+        refreshInventory();
+
+    } else {
+        showMessage("scan-out-message", result.message, "error");
+    }
+}
+
+function resetScanOut() {
+    document.getElementById("scan-out-code").value = "";
+    document.getElementById("scan-out-details").classList.add("hidden");
+    currentScanOutCylinder = null;
+}
+
+// ===============================
+// INVENTORY
+// ===============================
+function refreshInventory() {
+
+    const stats = db.getStats();
+
+    document.getElementById("stat-total").textContent = stats.total;
+    document.getElementById("stat-full").textContent = stats.full;
+    document.getElementById("stat-empty").textContent = stats.empty;
+    document.getElementById("stat-out").textContent = stats.out;
+
+    displayInventory();
+}
+
+function displayInventory() {
+
+    const list = document.getElementById("inventory-list");
+    list.innerHTML = "";
+
+    const data = db.getAll();
+
+    if (data.length === 0) {
+        list.innerHTML = "<p>No inventory</p>";
+        return;
+    }
+
+    data.forEach(item => {
+
+        const div = document.createElement("div");
+        div.className = "cylinder-card";
+
+        div.innerHTML = `
+            <h3>${item.glp_code}</h3>
+            <p>${item.brand}</p>
+            <p>${item.weight} kg</p>
+            <p>${item.status}</p>
+            <button onclick="startScanOut('${item.glp_code}')">
+                Scan Out
             </button>
+        `;
 
-            <button id="nav-scan-out" class="nav-btn" onclick="showScreen('scan-out')">
-                📤 Scan OUT
-            </button>
+        list.appendChild(div);
+    });
+}
 
-            <button id="nav-inventory" class="nav-btn" onclick="showScreen('inventory')">
-                📊 Inventory
-            </button>
-        </div>
-    </nav>
+function startScanOut(code) {
+    showScreen("scan-out");
+    document.getElementById("scan-out-code").value = code;
+    handleScanOutSearch();
+}
 
-    <!-- MAIN -->
-    <main class="container">
+// ===============================
+// SEARCH
+// ===============================
+function filterInventory() {
 
-        <!-- SCAN IN -->
-        <section id="screen-scan-in" class="screen active">
-            <div class="screen-content">
-                <h2>📥 Scan IN</h2>
+    const q = document.getElementById("inventory-search").value.toLowerCase();
 
-                <input id="scan-in-code" class="barcode-input" placeholder="GLP Code">
+    const data = db.getAll().filter(c =>
+        c.glp_code.toLowerCase().includes(q)
+    );
 
-                <select id="scan-in-brand" class="form-control">
-                    <option value="">Select Brand</option>
-                    <option>PayGo</option>
-                    <option>Wajiko</option>
-                    <option>GreenWells</option>
-                </select>
+    const list = document.getElementById("inventory-list");
+    list.innerHTML = "";
 
-                <input id="scan-in-weight" class="form-control" placeholder="Weight (kg)">
+    data.forEach(item => {
 
-                <select id="scan-in-status" class="form-control">
-                    <option value="">Select Status</option>
-                    <option value="Full">Full</option>
-                    <option value="Empty">Empty</option>
-                </select>
+        const div = document.createElement("div");
 
-                <button class="btn btn-primary btn-lg" onclick="handleScanIn()">
-                    Register Cylinder
-                </button>
+        div.innerHTML = `
+            <h3>${item.glp_code}</h3>
+            <p>${item.brand}</p>
+            <p>${item.weight}</p>
+        `;
 
-                <div id="scan-in-message" class="message"></div>
-            </div>
-        </section>
+        list.appendChild(div);
+    });
+}
 
-        <!-- SCAN OUT -->
-        <section id="screen-scan-out" class="screen">
-            <div class="screen-content">
-                <h2>📤 Scan OUT</h2>
-
-                <input id="scan-out-code" class="barcode-input" placeholder="GLP Code">
-
-                <button class="btn btn-info btn-lg" onclick="handleScanOutSearch()">
-                    Search
-                </button>
-
-                <div id="scan-out-details" class="hidden">
-                    <p id="scan-out-glp"></p>
-                    <p id="scan-out-brand"></p>
-                    <p id="scan-out-weight"></p>
-                    <p id="scan-out-status"></p>
-
-                    <button class="btn btn-danger" onclick="handleConfirmScanOut()">
-                        Confirm OUT
-                    </button>
-                </div>
-
-                <div id="scan-out-message" class="message"></div>
-            </div>
-        </section>
-
-        <!-- INVENTORY -->
-        <section id="screen-inventory" class="screen">
-            <div class="screen-content">
-                <h2>📊 Inventory</h2>
-
-                <input id="inventory-search" class="search-input" placeholder="Search GLP..." onkeyup="filterInventory()">
-
-                <button class="btn btn-secondary" onclick="refreshInventory()">
-                    Refresh
-                </button>
-
-                <!-- STATS -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div id="stat-total">0</div>
-                        <div>Total</div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div id="stat-full">0</div>
-                        <div>Full</div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div id="stat-empty">0</div>
-                        <div>Empty</div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div id="stat-out">0</div>
-                        <div>Out</div>
-                    </div>
-                </div>
-
-                <div id="inventory-list"></div>
-            </div>
-        </section>
-
-    </main>
-</div>
-
-<!-- SCRIPTS (ORDER IS VERY IMPORTANT) -->
-<script src="js/db.js"></script>
-<script src="js/barcode.js"></script>
-<script src="js/app.js"></script>
-
-</body>
-</html>
+// ===============================
+// INIT
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+    refreshInventory();
+});
