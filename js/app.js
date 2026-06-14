@@ -1,7 +1,82 @@
-// ================================ // LPG INVENTORY APP (FIXED) // ================================ 
+// ================================ // SIMPLE LPG DATABASE (CORE STORAGE ENGINE) // ================================ 
+class Database {
+    constructor() {
+        this.storageKey = "lpg_cylinders";
+        this.data = JSON.parse(localStorage.getItem(this.storageKey)) || [];
+    }
+
+    save() {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    }
+
+    // --------------------------- // ADD CYLINDER (SCAN IN) // --------------------------- 
+    addCylinder(glp_code, brand, weight, status) {
+        const exists = this.data.find(c => c.glp_code === glp_code && c.state === "IN");
+        if (exists) {
+            return { success: false, message: "Cylinder already exists in inventory" };
+        }
+        const cylinder = { 
+            glp_code, 
+            brand, 
+            weight, 
+            status, 
+            state: "IN", 
+            timestamp: new Date().toISOString() 
+        };
+        this.data.push(cylinder);
+        this.save();
+        return { success: true, message: "Cylinder added successfully" };
+    }
+
+    // --------------------------- // FIND CYLINDER (SCAN OUT SEARCH) // --------------------------- 
+    findCylinder(glp_code) {
+        const cylinder = this.data.find(c => c.glp_code === glp_code && c.state === "IN");
+        if (!cylinder) {
+            return { success: false };
+        }
+        return { success: true, cylinder };
+    }
+
+    // --------------------------- // REMOVE CYLINDER (SCAN OUT CONFIRM) // --------------------------- 
+    removeCylinder(glp_code) {
+        const index = this.data.findIndex(c => c.glp_code === glp_code && c.state === "IN");
+        if (index === -1) {
+            return { success: false, message: "Cylinder not found or already removed" };
+        }
+        this.data[index].state = "OUT";
+        this.data[index].outTime = new Date().toISOString();
+        this.save();
+        return { success: true, message: "Cylinder scanned OUT" };
+    }
+
+    // --------------------------- // GET ALL IN INVENTORY // --------------------------- 
+    getAll() {
+        return this.data.filter(c => c.state === "IN");
+    }
+
+    // --------------------------- // STATS // --------------------------- 
+    getStats() {
+        const total = this.data.filter(c => c.state === "IN").length;
+        const full = this.data.filter(c => c.state === "IN" && c.status === "Full").length;
+        const empty = this.data.filter(c => c.state === "IN" && c.status === "Empty").length;
+        const out = this.data.filter(c => c.state === "OUT").length;
+        return { total, full, empty, out };
+    }
+
+    // --------------------------- // SEARCH // --------------------------- 
+    search(query) {
+        return this.data.filter(c => c.glp_code.includes(query) && c.state === "IN");
+    }
+}
+
+// Global Database Instance
+const db = new Database();
+
+
+// ================================ // LPG INVENTORY CONTROLLER (UI RENDER LAYER) // ================================ 
 let currentScanOutCylinder = null;
 
-// ------------------------------- // NAVIGATION // ------------------------------- 
+// ------------------------------- // NAVIGATION MANAGER // ------------------------------- 
 function showScreen(screen) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
@@ -14,7 +89,7 @@ function showScreen(screen) {
     }
 }
 
-// ------------------------------- // MESSAGE // ------------------------------- 
+// ------------------------------- // NOTIFICATION ALERTS // ------------------------------- 
 function showMessage(id, msg, type) {
     const el = document.getElementById(id);
     el.textContent = msg;
@@ -22,7 +97,7 @@ function showMessage(id, msg, type) {
     setTimeout(() => el.classList.remove("show"), 3000);
 }
 
-// =============================== // SCAN IN // =============================== 
+// =============================== // SCAN IN WORKFLOW // =============================== 
 function handleScanIn() {
     const codeEl = document.getElementById("scan-in-code");
     const brandEl = document.getElementById("scan-in-brand");
@@ -43,9 +118,8 @@ function handleScanIn() {
     
     if (result.success) {
         showMessage("scan-in-message", result.message, "success");
-        // Reset code text input box safely
+        // Clear text safely and revert options back to select prompts index 0
         codeEl.value = "";
-        // Reset dropdown indexes smoothly back to their first option values
         brandEl.selectedIndex = 0;
         weightEl.selectedIndex = 0;
         statusEl.selectedIndex = 0;
@@ -54,7 +128,7 @@ function handleScanIn() {
     }
 }
 
-// =============================== // SCAN OUT // =============================== 
+// =============================== // SCAN OUT WORKFLOW // =============================== 
 function handleScanOutSearch() {
     const code = document.getElementById("scan-out-code").value.trim();
     const result = db.findCylinder(code);
@@ -96,7 +170,7 @@ function resetScanOut() {
     currentScanOutCylinder = null;
 }
 
-// =============================== // INVENTORY ENGINE // =============================== 
+// =============================== // INVENTORY ENGINE RECONCILIATION // =============================== 
 function refreshInventory() {
     const stats = db.getStats();
     document.getElementById("stat-total").textContent = stats.total;
@@ -106,7 +180,7 @@ function refreshInventory() {
     displayInventory();
 }
 
-// Abstracted card builder ensures uniform template styling for list states & live search filter matching
+// Component template function used to keep dashboard view and filtered query view layout structures perfectly uniform
 function buildCylinderCard(item) {
     const div = document.createElement("div");
     div.className = "cylinder-card";
@@ -141,7 +215,7 @@ function startScanOut(code) {
     handleScanOutSearch();
 }
 
-// =============================== // FILTER LIVE SEARCH // =============================== 
+// =============================== // SEARCH QUERY FILTER ENGINE // =============================== 
 function filterInventory() {
     const q = document.getElementById("inventory-search").value.toLowerCase();
     const data = db.getAll().filter(c => c.glp_code.toLowerCase().includes(q));
@@ -150,16 +224,16 @@ function filterInventory() {
     list.innerHTML = "";
 
     if (data.length === 0) {
-        list.innerHTML = "<p class='no-data'>No cylinders match search</p>";
+        list.innerHTML = "<p class='no-data'>No cylinders match search criteria</p>";
         return;
     }
 
     data.forEach(item => {
-        list.appendChild(buildCylinderCard(item)); // Reuses unified functional button markup
+        list.appendChild(buildCylinderCard(item));
     });
 }
 
-// =============================== // INIT // =============================== 
+// =============================== // APPLICATION INITIALIZER // =============================== 
 document.addEventListener("DOMContentLoaded", () => {
     refreshInventory();
 });
