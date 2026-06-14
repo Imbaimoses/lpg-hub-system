@@ -1,196 +1,298 @@
 // ================================
-// LPG INVENTORY SYSTEM (FIXED FULL)
+// APP.JS - UI & EVENT HANDLERS
 // ================================
 
-let cylinders = JSON.parse(localStorage.getItem("cylinders")) || [];
-let selectedCylinder = null;
-
-// ================================
-// SAVE
-// ================================
-function save() {
-    localStorage.setItem("cylinders", JSON.stringify(cylinders));
-}
-
-// ================================
-// NAVIGATION
-// ================================
-document.querySelectorAll(".nav-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        const screen = btn.getAttribute("data-screen");
-        switchScreen(screen);
-    });
+// Initialize app on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateDashboard();
+    updateSettings();
+    setupFormAutoComplete();
 });
 
-function switchScreen(screen) {
-    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-    document.getElementById(screen).classList.add("active");
-
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-    document.querySelector(`[data-screen="${screen}"]`).classList.add("active");
-
-    if (screen === "dashboard") updateDashboard();
-    if (screen === "inventory") displayInventory();
-    if (screen === "settings") updateSettings();
-}
-
-// ================================
-// SCAN IN
-// ================================
-function handleScanIn(e) {
-    e.preventDefault();
-
-    const glp = document.getElementById("glpCode").value.trim();
-    const brand = document.getElementById("brand").value.trim();
-    const weight = document.getElementById("weight").value.trim();
-    const status = document.getElementById("status").value;
-
-    if (!glp || !brand || !weight || !status) {
-        alert("Fill all fields");
-        return;
-    }
-
-    const exists = cylinders.find(c => c.glp === glp && c.state === "IN");
-    if (exists) {
-        alert("Already exists");
-        return;
-    }
-
-    cylinders.push({
-        glp,
-        brand,
-        weight,
-        status,
-        state: "IN",
-        date: new Date().toISOString()
+// ==================== SCREEN NAVIGATION ====================
+function switchScreenByName(screenName) {
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
     });
 
-    save();
-
-    e.target.reset();
-    updateDashboard();
-    displayInventory();
-}
-
-// ================================
-// SCAN OUT SEARCH
-// ================================
-function handleScanOut(e) {
-    e.preventDefault();
-
-    const code = document.getElementById("scanOutCode").value.trim();
-
-    selectedCylinder = cylinders.find(c => c.glp === code && c.state === "IN");
-
-    if (!selectedCylinder) {
-        alert("Not found");
-        return;
+    // Show selected screen
+    const screen = document.getElementById(screenName);
+    if (screen) {
+        screen.classList.add('active');
     }
 
-    document.getElementById("detailCode").textContent = selectedCylinder.glp;
-    document.getElementById("detailBrand").textContent = selectedCylinder.brand;
-    document.getElementById("detailWeight").textContent = selectedCylinder.weight;
-    document.getElementById("detailStatus").textContent = selectedCylinder.status;
-    document.getElementById("detailDate").textContent = new Date(selectedCylinder.date).toLocaleString();
-
-    document.getElementById("cylinderDetails").classList.remove("hidden");
-}
-
-// ================================
-// CONFIRM SCAN OUT
-// ================================
-function confirmScanOut() {
-    if (!selectedCylinder) return;
-
-    selectedCylinder.state = "OUT";
-    selectedCylinder.outDate = new Date().toISOString();
-
-    save();
-
-    cancelScanOut();
-    updateDashboard();
-    displayInventory();
-}
-
-// ================================
-// CANCEL SCAN OUT
-// ================================
-function cancelScanOut() {
-    selectedCylinder = null;
-    document.getElementById("scanOutCode").value = "";
-    document.getElementById("cylinderDetails").classList.add("hidden");
-}
-
-// ================================
-// INVENTORY
-// ================================
-function displayInventory() {
-    const list = document.getElementById("inventoryList");
-    list.innerHTML = "";
-
-    const inStock = cylinders.filter(c => c.state === "IN");
-
-    if (inStock.length === 0) {
-        list.innerHTML = "<p>No cylinders</p>";
-        return;
-    }
-
-    inStock.forEach(c => {
-        const div = document.createElement("div");
-        div.className = "cylinder-card";
-        div.innerHTML = `
-            <h4>${c.glp}</h4>
-            <p>${c.brand}</p>
-            <p>${c.weight} kg</p>
-            <p>${c.status}</p>
-            <button onclick="quickOut('${c.glp}')">Scan Out</button>
-        `;
-        list.appendChild(div);
+    // Update nav buttons
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-screen') === screenName) {
+            btn.classList.add('active');
+        }
     });
+
+    // Refresh screen-specific data
+    if (screenName === 'inventory') {
+        displayInventory();
+    } else if (screenName === 'dashboard') {
+        updateDashboard();
+    } else if (screenName === 'settings') {
+        updateSettings();
+    }
 }
 
-// ================================
-// QUICK SCAN OUT
-// ================================
-function quickOut(glp) {
-    switchScreen("scanOut");
-    document.getElementById("scanOutCode").value = glp;
-    selectedCylinder = cylinders.find(c => c.glp === glp);
-    handleScanOut(new Event("submit"));
-}
-
-// ================================
-// DASHBOARD
-// ================================
+// ==================== DASHBOARD ====================
 function updateDashboard() {
-    const inStock = cylinders.filter(c => c.state === "IN");
-
-    document.getElementById("statTotal").textContent = inStock.length;
-    document.getElementById("statFull").textContent = inStock.filter(c => c.status === "Full").length;
-    document.getElementById("statPartial").textContent = inStock.filter(c => c.status === "Partial").length;
-    document.getElementById("statEmpty").textContent = inStock.filter(c => c.status === "Empty").length;
-    document.getElementById("statOut").textContent = cylinders.filter(c => c.state === "OUT").length;
+    const stats = db.getStats();
+    
+    document.getElementById('statTotal').textContent = stats.total;
+    document.getElementById('statFull').textContent = stats.full;
+    document.getElementById('statPartial').textContent = stats.partial;
+    document.getElementById('statEmpty').textContent = stats.empty;
+    document.getElementById('statOut').textContent = stats.out;
+    document.getElementById('statWeight').textContent = stats.totalWeight;
 }
 
-// ================================
-// SETTINGS
-// ================================
+// ==================== SCAN IN ====================
+function handleScanIn(event) {
+    event.preventDefault();
+
+    const glpCode = document.getElementById('glpCode').value;
+    const brand = document.getElementById('brand').value;
+    const weight = document.getElementById('weight').value;
+    const status = document.getElementById('status').value;
+
+    const result = db.addCylinder(glpCode, brand, weight, status);
+    
+    showMessage('scanInMessage', result.success, result.message);
+
+    if (result.success) {
+        event.target.reset();
+        document.getElementById('glpCode').focus();
+        updateDashboard();
+        setTimeout(() => {
+            switchScreenByName('dashboard');
+        }, 1500);
+    }
+}
+
+// ==================== SCAN OUT ====================
+let currentCylinderForRemoval = null;
+
+function handleScanOut(event) {
+    event.preventDefault();
+
+    const glpCode = document.getElementById('scanOutCode').value;
+    const result = db.findCylinder(glpCode);
+
+    if (!result.success) {
+        showMessage('scanOutMessage', false, result.message);
+        document.getElementById('cylinderDetails').classList.add('hidden');
+        return;
+    }
+
+    // Show cylinder details
+    currentCylinderForRemoval = result.cylinder;
+    displayCylinderDetails(result.cylinder);
+    document.getElementById('cylinderDetails').classList.remove('hidden');
+    showMessage('scanOutMessage', true, 'Cylinder found. Please confirm removal.');
+}
+
+function displayCylinderDetails(cylinder) {
+    document.getElementById('detailCode').textContent = cylinder.glp_code;
+    document.getElementById('detailBrand').textContent = cylinder.brand;
+    document.getElementById('detailWeight').textContent = cylinder.weight + ' kg';
+    document.getElementById('detailStatus').textContent = cylinder.status;
+    document.getElementById('detailDate').textContent = new Date(cylinder.timestamp).toLocaleString();
+}
+
+function confirmScanOut() {
+    if (!currentCylinderForRemoval) return;
+
+    const result = db.removeCylinder(currentCylinderForRemoval.glp_code);
+    showMessage('scanOutMessage', result.success, result.message);
+
+    if (result.success) {
+        document.getElementById('cylinderDetails').classList.add('hidden');
+        document.getElementById('scanOutCode').value = '';
+        document.getElementById('scanOutCode').focus();
+        updateDashboard();
+        
+        setTimeout(() => {
+            switchScreenByName('dashboard');
+        }, 1500);
+    }
+
+    currentCylinderForRemoval = null;
+}
+
+function cancelScanOut() {
+    document.getElementById('cylinderDetails').classList.add('hidden');
+    document.getElementById('scanOutCode').value = '';
+    document.getElementById('scanOutCode').focus();
+    currentCylinderForRemoval = null;
+}
+
+// ==================== INVENTORY ====================
+function displayInventory() {
+    const searchInput = document.getElementById('searchInput').value;
+    const filterStatus = document.getElementById('filterStatus').value;
+
+    let cylinders;
+
+    if (searchInput) {
+        cylinders = db.search(searchInput);
+    } else {
+        cylinders = db.getAll();
+    }
+
+    // Apply status filter
+    if (filterStatus) {
+        cylinders = cylinders.filter(c => c.status === filterStatus);
+    }
+
+    const inventoryList = document.getElementById('inventoryList');
+
+    if (cylinders.length === 0) {
+        inventoryList.innerHTML = '<p style="text-align: center; color: #999; grid-column: 1/-1;">No cylinders found</p>';
+        return;
+    }
+
+    inventoryList.innerHTML = cylinders.map(cylinder => `
+        <div class="inventory-item">
+            <div class="inventory-item-header">
+                <strong>${cylinder.glp_code}</strong>
+                <span class="status-badge status-${cylinder.status.toLowerCase()}">${cylinder.status}</span>
+            </div>
+            <div class="inventory-item-details">
+                <p><strong>Brand:</strong> ${cylinder.brand}</p>
+                <p><strong>Weight:</strong> ${cylinder.weight} kg</p>
+                <p><strong>Added:</strong> ${new Date(cylinder.timestamp).toLocaleString()}</p>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="removeFromInventoryUI('${cylinder.glp_code}')">Remove</button>
+        </div>
+    `).join('');
+}
+
+function handleSearch() {
+    displayInventory();
+}
+
+function removeFromInventoryUI(glpCode) {
+    if (confirm(`Remove cylinder ${glpCode}?`)) {
+        const result = db.removeCylinder(glpCode);
+        showMessage('inventoryMessage', result.success, result.message);
+        if (result.success) {
+            displayInventory();
+            updateDashboard();
+        }
+    }
+}
+
+// ==================== SETTINGS & DATA MANAGEMENT ====================
 function updateSettings() {
-    document.getElementById("totalRecords").textContent = cylinders.length;
-    document.getElementById("inInventoryCount").textContent = cylinders.filter(c => c.state === "IN").length;
-    document.getElementById("outCount").textContent = cylinders.filter(c => c.state === "OUT").length;
+    const stats = db.getStats();
+    const totalRecords = db.data.length;
+    const inCount = stats.total;
+    const outCount = stats.out;
+    
+    // Calculate storage size
+    const dataString = JSON.stringify(db.data);
+    const bytes = new Blob([dataString]).size;
+    const kb = (bytes / 1024).toFixed(2);
 
-    const size = new Blob([JSON.stringify(cylinders)]).size;
-    document.getElementById("storageUsed").textContent = (size / 1024).toFixed(2) + " KB";
+    document.getElementById('totalRecords').textContent = totalRecords;
+    document.getElementById('inInventoryCount').textContent = inCount;
+    document.getElementById('outCount').textContent = outCount;
+    document.getElementById('storageUsed').textContent = kb + ' KB';
 }
 
-// ================================
-// EXPORT
-// ================================
+function archiveRecords() {
+    const days = parseInt(document.getElementById('archiveDays').value) || 30;
+    const result = db.archiveOldRecords(days);
+    showMessage('settingsMessage', result.success, result.message);
+    if (result.success) {
+        updateSettings();
+    }
+}
+
 function exportData() {
-    const blob = new Blob([JSON.stringify(cylinders, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "lpg-data.json";
-    a.click();
+    const data = db.exportData();
+    const json = JSON.stringify(data, null, 2);
+    downloadFile(json, 'lpg_inventory_export.json', 'application/json');
+    showMessage('settingsMessage', true, 'Data exported successfully!');
+}
+
+function downloadCSV() {
+    const stats = db.getStats();
+    const cylinders = db.getAll();
+
+    let csv = 'LPG Cylinder Inventory Report\n';
+    csv += `Export Date: ${new Date().toLocaleString()}\n\n`;
+
+    csv += 'SUMMARY STATISTICS\n';
+    csv += `Total In Stock,Full,Partial,Empty,Out,Total Weight (kg)\n`;
+    csv += `${stats.total},${stats.full},${stats.partial},${stats.empty},${stats.out},${stats.totalWeight}\n\n`;
+
+    csv += 'INVENTORY DETAILS\n';
+    csv += 'GLP Code,Brand,Weight (kg),Status,Added Date\n';
+    cylinders.forEach(c => {
+        csv += `${c.glp_code},"${c.brand}",${c.weight},${c.status},"${new Date(c.timestamp).toLocaleString()}"\n`;
+    });
+
+    downloadFile(csv, 'lpg_inventory_export.csv', 'text/csv');
+    showMessage('settingsMessage', true, 'CSV exported successfully!');
+}
+
+function clearAllData() {
+    const result = db.clearAll();
+    showMessage('settingsMessage', result.success, result.message);
+    if (result.success) {
+        updateDashboard();
+        updateSettings();
+        displayInventory();
+    }
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+function showMessage(elementId, isSuccess, message) {
+    const element = document.getElementById(elementId);
+    element.textContent = message;
+    element.className = 'message ' + (isSuccess ? 'message-success' : 'message-error');
+    element.style.display = 'block';
+
+    setTimeout(() => {
+        element.style.display = 'none';
+    }, 4000);
+}
+
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function setupFormAutoComplete() {
+    // Get recent brands for auto-complete
+    const brandInput = document.getElementById('brand');
+    const recentBrands = getRecentBrands();
+
+    if (brandInput) {
+        brandInput.addEventListener('input', function() {
+            const value = this.value.toUpperCase();
+            const suggestions = recentBrands.filter(b => b.includes(value));
+            // Could enhance with a datalist or autocomplete UI
+        });
+    }
+}
+
+function getRecentBrands() {
+    const brands = new Set();
+    db.data.forEach(c => brands.add(c.brand));
+    return Array.from(brands).sort();
 }
