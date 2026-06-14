@@ -55,12 +55,6 @@ function handleScanIn(event) {
     const weight = document.getElementById('weight').value;
     const status = document.getElementById('status').value;
 
-    // Basic validation
-    if (!glpCode || !brand || !weight || !status) {
-        showMessage('scanInMessage', 'Please fill all fields', 'error');
-        return;
-    }
-
     // Add to database
     const result = db.addCylinder(glpCode, brand, weight, status);
 
