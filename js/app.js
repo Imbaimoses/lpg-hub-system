@@ -1,190 +1,101 @@
 // ================================
-// LPG HUB SYSTEM - FIXED APP JS
+// SIMPLE LPG DATABASE (FIXED)
 // ================================
 
-let currentScanOutCylinder = null;
+class Database {
+    constructor() {
+        this.storageKey = "lpg_cylinders";
+        this.data = JSON.parse(localStorage.getItem(this.storageKey)) || [];
+    }
 
-// -------------------------------
-// NAVIGATION (FIXED)
-// -------------------------------
-function showScreen(screenName) {
-    const screens = document.querySelectorAll('.screen');
-    const buttons = document.querySelectorAll('.nav-btn');
+    save() {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+    }
 
-    screens.forEach(s => s.classList.remove('active'));
-    buttons.forEach(b => b.classList.remove('active'));
+    // ---------------------------
+    // ADD CYLINDER (SCAN IN)
+    // ---------------------------
+    addCylinder(glp_code, brand, weight, status) {
+        const exists = this.data.find(c => c.glp_code === glp_code && c.state === "IN");
 
-    const targetScreen = document.getElementById(`screen-${screenName}`);
-    const targetBtn = document.getElementById(`nav-${screenName}`);
-
-    if (targetScreen) targetScreen.classList.add('active');
-    if (targetBtn) targetBtn.classList.add('active');
-
-    // Auto focus inputs
-    setTimeout(() => {
-        if (screenName === 'scan-in') {
-            document.getElementById('scan-in-code')?.focus();
+        if (exists) {
+            return { success: false, message: "Cylinder already exists in inventory" };
         }
-        if (screenName === 'scan-out') {
-            document.getElementById('scan-out-code')?.focus();
+
+        const cylinder = {
+            glp_code,
+            brand,
+            weight,
+            status,
+            state: "IN",
+            timestamp: new Date().toISOString()
+        };
+
+        this.data.push(cylinder);
+        this.save();
+
+        return { success: true, message: "Cylinder added successfully" };
+    }
+
+    // ---------------------------
+    // FIND CYLINDER (SCAN OUT SEARCH)
+    // ---------------------------
+    findCylinder(glp_code) {
+        const cylinder = this.data.find(c => c.glp_code === glp_code && c.state === "IN");
+
+        if (!cylinder) {
+            return { success: false };
         }
-        if (screenName === 'inventory') {
-            refreshInventory();
+
+        return { success: true, cylinder };
+    }
+
+    // ---------------------------
+    // REMOVE CYLINDER (SCAN OUT CONFIRM)
+    // ---------------------------
+    removeCylinder(glp_code) {
+        const index = this.data.findIndex(c => c.glp_code === glp_code && c.state === "IN");
+
+        if (index === -1) {
+            return { success: false, message: "Cylinder not found or already removed" };
         }
-    }, 200);
-}
 
-// -------------------------------
-// MESSAGE SYSTEM
-// -------------------------------
-function showMessage(id, msg, type = 'info') {
-    const el = document.getElementById(id);
-    if (!el) return;
+        this.data[index].state = "OUT";
+        this.data[index].outTime = new Date().toISOString();
 
-    el.textContent = msg;
-    el.className = `message show ${type}`;
+        this.save();
 
-    setTimeout(() => {
-        el.classList.remove('show');
-    }, 4000);
-}
-
-// ===============================
-// SCAN IN (WORKING)
-// ===============================
-function handleScanIn() {
-    const code = document.getElementById('scan-in-code').value.trim();
-    const brand = document.getElementById('scan-in-brand').value;
-    const weight = document.getElementById('scan-in-weight').value;
-    const status = document.getElementById('scan-in-status').value;
-
-    // STRICT VALIDATION (GLP ONLY RULE)
-    if (!code.startsWith('GLP')) {
-        return showMessage('scan-in-message', 'Only GLP cylinders allowed!', 'error');
+        return { success: true, message: "Cylinder scanned OUT" };
     }
 
-    if (!code || !brand || !weight || !status) {
-        return showMessage('scan-in-message', 'Fill all fields', 'error');
+    // ---------------------------
+    // GET ALL IN INVENTORY
+    // ---------------------------
+    getAll() {
+        return this.data.filter(c => c.state === "IN");
     }
 
-    const result = db.addCylinder(code, brand, weight, status);
+    // ---------------------------
+    // STATS
+    // ---------------------------
+    getStats() {
+        const total = this.data.filter(c => c.state === "IN").length;
+        const full = this.data.filter(c => c.state === "IN" && c.status === "Full").length;
+        const empty = this.data.filter(c => c.state === "IN" && c.status === "Empty").length;
+        const out = this.data.filter(c => c.state === "OUT").length;
 
-    if (result.success) {
-        showMessage('scan-in-message', result.message, 'success');
+        return { total, full, empty, out };
+    }
 
-        document.getElementById('scan-in-code').value = '';
-        document.getElementById('scan-in-weight').value = '';
-        document.getElementById('scan-in-brand').value = '';
-        document.getElementById('scan-in-status').value = '';
-
-        updateInventoryStats();
-    } else {
-        showMessage('scan-in-message', result.message, 'error');
+    // ---------------------------
+    // SEARCH
+    // ---------------------------
+    search(query) {
+        return this.data.filter(c =>
+            c.glp_code.includes(query) && c.state === "IN"
+        );
     }
 }
 
-// ===============================
-// SCAN OUT (FIXED)
-// ===============================
-function handleScanOutSearch() {
-    const code = document.getElementById('scan-out-code').value.trim();
-
-    if (!code) {
-        return showMessage('scan-out-message', 'Enter GLP code', 'error');
-    }
-
-    const result = db.findCylinder(code);
-
-    if (!result.success) {
-        return showMessage('scan-out-message', 'Cylinder not found', 'error');
-    }
-
-    currentScanOutCylinder = result.cylinder;
-
-    document.getElementById('scan-out-glp').textContent = result.cylinder.glp_code;
-    document.getElementById('scan-out-brand').textContent = result.cylinder.brand;
-    document.getElementById('scan-out-weight').textContent = result.cylinder.weight;
-    document.getElementById('scan-out-status').textContent = result.cylinder.status;
-
-    document.getElementById('scan-out-details').classList.remove('hidden');
-
-    showMessage('scan-out-message', 'Cylinder loaded', 'info');
-}
-
-function handleConfirmScanOut() {
-    if (!currentScanOutCylinder) {
-        return showMessage('scan-out-message', 'No cylinder selected', 'error');
-    }
-
-    const result = db.removeCylinder(currentScanOutCylinder.glp_code);
-
-    if (result.success) {
-        showMessage('scan-out-message', 'Cylinder removed successfully', 'success');
-
-        resetScanOut();
-        updateInventoryStats();
-        displayInventory();
-    } else {
-        showMessage('scan-out-message', result.message, 'error');
-    }
-}
-
-function resetScanOut() {
-    document.getElementById('scan-out-code').value = '';
-    document.getElementById('scan-out-details').classList.add('hidden');
-    currentScanOutCylinder = null;
-}
-
-// ===============================
-// INVENTORY (FIXED)
-// ===============================
-function displayInventory() {
-    const list = document.getElementById('inventory-list');
-    const data = db.getAll();
-
-    list.innerHTML = '';
-
-    if (!data.length) {
-        list.innerHTML = `<p style="text-align:center;">No cylinders found</p>`;
-        return;
-    }
-
-    data.forEach(c => {
-        const div = document.createElement('div');
-        div.className = 'cylinder-card';
-
-        div.innerHTML = `
-            <div><b>${c.glp_code}</b></div>
-            <div>Brand: ${c.brand}</div>
-            <div>Weight: ${c.weight}</div>
-            <div>Status: ${c.status}</div>
-        `;
-
-        list.appendChild(div);
-    });
-}
-
-function refreshInventory() {
-    updateInventoryStats();
-    displayInventory();
-}
-
-// ===============================
-// STATS
-// ===============================
-function updateInventoryStats() {
-    const stats = db.getStats();
-
-    document.getElementById('stat-total').textContent = stats.total || 0;
-    document.getElementById('stat-full').textContent = stats.full || 0;
-    document.getElementById('stat-empty').textContent = stats.empty || 0;
-    document.getElementById('stat-out').textContent = stats.out || 0;
-}
-
-// ===============================
-// INIT (IMPORTANT FIX)
-// ===============================
-document.addEventListener('DOMContentLoaded', () => {
-    showScreen('scan-in');
-    updateInventoryStats();
-});
+// GLOBAL DB INSTANCE
+const db = new Database();
