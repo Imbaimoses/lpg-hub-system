@@ -1,84 +1,48 @@
-// Barcode Generator using JsBarcode library pattern
+// Barcode + QR Code Generator (CLEAN FIX)
+
 class BarcodeGenerator {
-    // Generate simple barcode representation
+
+    // Generate GLP code (safe format)
     static generateGLPCode() {
         const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         let code = 'GLP';
-        for (let i = 0; i < 12; i++) {
+
+        for (let i = 0; i < 9; i++) {
             code += chars.charAt(Math.floor(Math.random() * chars.length));
         }
+
         return code;
     }
 
-    // Create barcode image using canvas
-    static createBarcodeImage(glpCode, canvasId = null) {
-        const canvas = canvasId ? document.getElementById(canvasId) : document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        const width = 300;
-        const height = 100;
-        canvas.width = width;
-        canvas.height = height;
+    // Generate QR Code (REAL one using QRCode library)
+    static generateQRCode(canvas, glpCode) {
+        if (!canvas || !glpCode) return;
 
-        // White background
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, width, height);
-
-        // Black border
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, width, height);
-
-        // Draw bars based on code
-        const barWidth = width / glpCode.length;
-        ctx.fillStyle = 'black';
-
-        for (let i = 0; i < glpCode.length; i++) {
-            const charCode = glpCode.charCodeAt(i);
-            const barHeight = 50 + (charCode % 30);
-            ctx.fillRect(
-                i * barWidth + 5,
-                height - barHeight - 10,
-                barWidth - 2,
-                barHeight
-            );
-        }
-
-        // Draw text
-        ctx.fillStyle = 'black';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(glpCode, width / 2, height - 5);
-
-        return canvas;
+        QRCode.toCanvas(canvas, glpCode, {
+            width: 120,
+            margin: 1,
+            color: {
+                dark: "#000000",
+                light: "#ffffff"
+            }
+        }, function (error) {
+            if (error) {
+                console.error("QR generation error:", error);
+            }
+        });
     }
 
-    // Download barcode as image
-    static downloadBarcode(glpCode) {
-        const canvas = this.createBarcodeImage(glpCode);
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = `barcode_${glpCode}.png`;
-        link.click();
-    }
+    // Download QR Code
+    static downloadQRCode(glpCode) {
+        const canvas = document.createElement("canvas");
 
-    // Encode Code128 style barcode
-    static encodeCode128(text) {
-        const code128Table = {
-            ' ': '00', '!': '01', '"': '02', '#': '03', '$': '04',
-            '%': '05', '&': '06', "'": '07', '(': '08', ')': '09',
-            '*': '10', '+': '11', ',': '12', '-': '13', '.': '14',
-            '/': '15', '0': '16', '1': '17', '2': '18', '3': '19',
-            '4': '20', '5': '21', '6': '22', '7': '23', '8': '24',
-            '9': '25', ':': '26', ';': '27', '<': '28', '=': '29',
-            '>': '30', '?': '31', '@': '32', 'A': '33', 'B': '34',
-            'C': '35', 'D': '36', 'E': '37', 'F': '38', 'G': '39'
-        };
-        
-        let encoded = '';
-        for (let char of text) {
-            encoded += code128Table[char] || '63';
-        }
-        return encoded;
+        QRCode.toCanvas(canvas, glpCode, function (err) {
+            if (err) return console.error(err);
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL("image/png");
+            link.download = `GLP_${glpCode}.png`;
+            link.click();
+        });
     }
 }
