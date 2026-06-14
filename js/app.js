@@ -32,7 +32,6 @@ class Database {
         }
     }
 
-    // Validate required fields
     validateCylinder(glp_code, brand, weight, status) {
         if (!glp_code || typeof glp_code !== "string" || glp_code.trim() === "") {
             return { valid: false, message: "Invalid GLP code" };
@@ -49,18 +48,14 @@ class Database {
         return { valid: true };
     }
 
-    // ADD CYLINDER (SCAN IN)
     addCylinder(glp_code, brand, weight, status) {
-        // Validate input
         const validation = this.validateCylinder(glp_code, brand, weight, status);
         if (!validation.valid) {
             return { success: false, message: validation.message };
         }
 
-        // Normalize GLP code (trim & uppercase for consistency)
         const normalizedCode = glp_code.trim().toUpperCase();
 
-        // Check for duplicates (case-insensitive)
         const exists = this.data.find(c => 
             c.glp_code.toUpperCase() === normalizedCode && c.state === "IN"
         );
@@ -81,14 +76,13 @@ class Database {
         const saveResult = this.save();
         
         if (!saveResult.success) {
-            this.data.pop(); // Rollback
+            this.data.pop();
             return saveResult;
         }
 
         return { success: true, message: "Cylinder added successfully", cylinder };
     }
 
-    // FIND CYLINDER (SCAN OUT SEARCH)
     findCylinder(glp_code) {
         if (!glp_code || typeof glp_code !== "string") {
             return { success: false, message: "Invalid GLP code" };
@@ -106,7 +100,6 @@ class Database {
         return { success: true, cylinder };
     }
 
-    // REMOVE CYLINDER (SCAN OUT CONFIRM)
     removeCylinder(glp_code) {
         if (!glp_code || typeof glp_code !== "string") {
             return { success: false, message: "Invalid GLP code" };
@@ -126,7 +119,6 @@ class Database {
 
         const saveResult = this.save();
         if (!saveResult.success) {
-            // Rollback state change
             this.data[index].state = "IN";
             delete this.data[index].outTime;
             return saveResult;
@@ -135,14 +127,12 @@ class Database {
         return { success: true, message: "Cylinder scanned OUT", outTime: this.data[index].outTime };
     }
 
-    // GET ALL IN INVENTORY
     getAll() {
         return this.data
             .filter(c => c.state === "IN")
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
 
-    // GET STATS
     getStats() {
         const inInventory = this.data.filter(c => c.state === "IN");
         const outInventory = this.data.filter(c => c.state === "OUT");
@@ -157,7 +147,6 @@ class Database {
         };
     }
 
-    // SEARCH (with validation)
     search(query) {
         if (!query || typeof query !== "string") {
             return [];
@@ -172,7 +161,6 @@ class Database {
         );
     }
 
-    // ARCHIVE OLD OUT RECORDS
     archiveOldRecords(daysOld = 30) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);
@@ -194,7 +182,6 @@ class Database {
         return { success: true, message: "No old records to archive" };
     }
 
-    // EXPORT DATA
     exportData() {
         const stats = this.getStats();
         return {
@@ -204,7 +191,6 @@ class Database {
         };
     }
 
-    // CLEAR ALL DATA (use with caution)
     clearAll() {
         if (confirm("Are you sure? This will delete all records.")) {
             this.data = [];
@@ -215,46 +201,83 @@ class Database {
     }
 }
 
-// GLOBAL DB INSTANCE
 const db = new Database();
+
+// ================================
+// BARCODE + QR CODE GENERATOR
+// ================================
+class BarcodeGenerator {
+    static generateGLPCode() {
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let code = 'GLP';
+
+        for (let i = 0; i < 9; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        return code;
+    }
+
+    static generateQRCode(canvas, glpCode) {
+        if (!canvas || !glpCode) return;
+
+        QRCode.toCanvas(canvas, glpCode, {
+            width: 150,
+            margin: 2,
+            color: {
+                dark: "#000000",
+                light: "#ffffff"
+            }
+        }, function (error) {
+            if (error) {
+                console.error("QR generation error:", error);
+            }
+        });
+    }
+
+    static downloadQRCode(glpCode) {
+        const canvas = document.createElement("canvas");
+
+        QRCode.toCanvas(canvas, glpCode, function (err) {
+            if (err) return console.error(err);
+
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL("image/png");
+            link.download = `GLP_${glpCode}.png`;
+            link.click();
+        });
+    }
+}
 
 // ================================
 // UI & EVENT HANDLER LOGIC
 // ================================
 
-// ============== SCREEN NAVIGATION ==============
-function switchScreen(screenId) {
-    // Hide all screens
+function switchScreenByName(screenId) {
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
 
-    // Show selected screen
     document.getElementById(screenId).classList.add('active');
 
-    // Update nav buttons
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
+    document.querySelector(`[data-screen="${screenId}"]`).classList.add('active');
 
-    // Update dashboard stats when switching
     if (screenId === 'dashboard') {
         updateDashboard();
     }
 
-    // Refresh inventory when viewing
     if (screenId === 'inventory') {
         displayInventory();
     }
 
-    // Refresh settings when viewing
     if (screenId === 'settings') {
         updateSettingsInfo();
     }
 }
 
-// ============== DASHBOARD ==============
 function updateDashboard() {
     const stats = db.getStats();
 
@@ -266,7 +289,6 @@ function updateDashboard() {
     document.getElementById('statWeight').textContent = stats.totalWeight;
 }
 
-// ============== SCAN IN ==============
 function handleScanIn(event) {
     event.preventDefault();
 
@@ -275,7 +297,6 @@ function handleScanIn(event) {
     const weight = document.getElementById('weight').value;
     const status = document.getElementById('status').value;
 
-    // Add to database
     const result = db.addCylinder(glpCode, brand, weight, status);
 
     if (result.success) {
@@ -287,7 +308,6 @@ function handleScanIn(event) {
     }
 }
 
-// ============== SCAN OUT ==============
 let currentCylinderToRemove = null;
 
 function handleScanOut(event) {
@@ -300,7 +320,6 @@ function handleScanOut(event) {
         return;
     }
 
-    // Find cylinder
     const result = db.findCylinder(glpCode);
 
     if (result.success) {
@@ -342,19 +361,16 @@ function cancelScanOut() {
     document.getElementById('scanOutMessage').classList.remove('show');
 }
 
-// ============== INVENTORY ==============
 function displayInventory() {
     const query = document.getElementById('searchInput')?.value.trim() || '';
     const filterStatus = document.getElementById('filterStatus')?.value || '';
 
     let cylinders = db.getAll();
 
-    // Apply search filter
     if (query) {
         cylinders = db.search(query);
     }
 
-    // Apply status filter
     if (filterStatus) {
         cylinders = cylinders.filter(c => c.status === filterStatus);
     }
@@ -366,7 +382,6 @@ function displayInventory() {
         return;
     }
 
-    // Group by brand
     const grouped = cylinders.reduce((acc, cylinder) => {
         if (!acc[cylinder.brand]) {
             acc[cylinder.brand] = [];
@@ -376,7 +391,6 @@ function displayInventory() {
     }, {});
 
     container.innerHTML = Object.entries(grouped).map(([brand, items]) => {
-        // Group by status within brand
         const byStatus = items.reduce((acc, cylinder) => {
             if (!acc[cylinder.status]) {
                 acc[cylinder.status] = [];
@@ -391,7 +405,7 @@ function displayInventory() {
                 ${Object.entries(byStatus).map(([status, statusItems]) => `
                     <div class="status-group">
                         <div class="status-label">${status} (${statusItems.length})</div>
-                        <div class="inventory-list" style="grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
+                        <div class="inventory-list" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
                             ${statusItems.map(cylinder => createCylinderCard(cylinder)).join('')}
                         </div>
                     </div>
@@ -399,6 +413,17 @@ function displayInventory() {
             </div>
         `;
     }).join('');
+
+    // Generate QR codes after cards are rendered
+    setTimeout(() => {
+        cylinders.forEach(cylinder => {
+            const canvasId = `qr_${cylinder.glp_code}`;
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+                BarcodeGenerator.generateQRCode(canvas, cylinder.glp_code);
+            }
+        });
+    }, 100);
 }
 
 function createCylinderCard(cylinder) {
@@ -409,9 +434,14 @@ function createCylinderCard(cylinder) {
         'Empty': '#e74c3c'
     }[cylinder.status] || '#999';
 
+    const canvasId = `qr_${cylinder.glp_code}`;
+
     return `
         <div class="cylinder-card">
+            <!-- GLP CODE -->
             <div class="cylinder-code">${cylinder.glp_code}</div>
+            
+            <!-- DESCRIPTION (Brand, Weight, Status, Date) -->
             <div class="cylinder-info">
                 <div class="info-item">
                     <span class="info-label">Brand:</span>
@@ -430,14 +460,22 @@ function createCylinderCard(cylinder) {
                     <span class="info-value">${date}</span>
                 </div>
             </div>
-            <button class="btn-scan-out" onclick="quickScanOut('${cylinder.glp_code}')">Scan Out</button>
+            
+            <!-- QR CODE (Below Description) -->
+            <div style="text-align: center; margin: 1rem 0; padding: 0.75rem; background: #f9f9f9; border-radius: 4px; border: 1px solid #e0e0e0;">
+                <canvas id="${canvasId}" style="max-width: 150px; max-height: 150px;"></canvas>
+            </div>
+            
+            <!-- BUTTONS (Below QR) -->
+            <button class="btn-scan-out" onclick="quickScanOut('${cylinder.glp_code}')">📤 Scan Out</button>
+            <button class="btn" style="width: 100%; padding: 0.6rem; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 0.5rem; font-weight: 600;" onclick="BarcodeGenerator.downloadQRCode('${cylinder.glp_code}')">⬇️ Download QR</button>
         </div>
     `;
 }
 
 function quickScanOut(glpCode) {
     document.getElementById('scanOutCode').value = glpCode;
-    switchScreen('scanOut');
+    switchScreenByName('scanOut');
     const result = db.findCylinder(glpCode);
     if (result.success) {
         currentCylinderToRemove = result.cylinder;
@@ -450,7 +488,6 @@ function handleSearch() {
     displayInventory();
 }
 
-// ============== SETTINGS ==============
 function updateSettingsInfo() {
     const stats = db.getStats();
     const totalRecords = db.data.length;
@@ -460,7 +497,6 @@ function updateSettingsInfo() {
     document.getElementById('inInventoryCount').textContent = stats.total;
     document.getElementById('outCount').textContent = outCount;
 
-    // Calculate storage used
     const storageSize = new Blob([JSON.stringify(db.data)]).size;
     const storageSizeKB = (storageSize / 1024).toFixed(2);
     document.getElementById('storageUsed').textContent = storageSizeKB + ' KB';
@@ -489,7 +525,6 @@ function downloadCSV() {
         return;
     }
 
-    // CSV Headers
     const headers = ['GLP Code', 'Brand', 'Weight (kg)', 'Status', 'Added Date'];
     const rows = cylinders.map(c => [
         c.glp_code,
@@ -499,7 +534,6 @@ function downloadCSV() {
         new Date(c.timestamp).toLocaleString()
     ]);
 
-    // Create CSV
     const csv = [
         headers.join(','),
         ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
@@ -528,7 +562,6 @@ function clearAllData() {
     }
 }
 
-// ============== UTILITY FUNCTIONS ==============
 function showMessage(elementId, message, type) {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -536,7 +569,6 @@ function showMessage(elementId, message, type) {
     element.textContent = message;
     element.className = `message show ${type}`;
 
-    // Auto-hide after 5 seconds (unless error)
     if (type !== 'error') {
         setTimeout(() => {
             element.classList.remove('show');
@@ -555,12 +587,10 @@ function downloadFile(blob, filename) {
     URL.revokeObjectURL(url);
 }
 
-// ============== INITIALIZE ==============
 document.addEventListener('DOMContentLoaded', () => {
     updateDashboard();
     updateSettingsInfo();
 
-    // Auto-update stats periodically (every 5 seconds)
     setInterval(() => {
         if (document.getElementById('dashboard').classList.contains('active')) {
             updateDashboard();
