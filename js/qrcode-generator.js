@@ -10,7 +10,7 @@ function generateCylinderQR(glpCode, weight, count) {
     const qrContainer = document.createElement('div');
     qrContainer.id = 'qrcode_' + count;
     qrContainer.style.margin = '10px';
-    qrContainer.style.padding = '10px';
+    qrContainer.style.padding = '15px';
     qrContainer.style.border = '2px solid #333';
     qrContainer.style.borderRadius = '8px';
     qrContainer.style.display = 'inline-block';
@@ -23,9 +23,9 @@ function generateCylinderQR(glpCode, weight, count) {
     info.style.fontSize = '16px';
     info.style.fontWeight = 'bold';
     info.innerHTML = `
-        <div>${glpCode}</div>
-        <div>${weight}kg</div>
-        <div>#${count}</div>
+        <div style="font-size: 18px; margin-bottom: 5px;">${glpCode}</div>
+        <div style="font-size: 14px; color: #666;">${weight}kg</div>
+        <div style="font-size: 12px; color: #999;">#${count}</div>
     `;
     
     qrContainer.appendChild(info);
@@ -41,3 +41,25 @@ function generateCylinderQR(glpCode, weight, count) {
     
     return qrContainer;
 }
+
+// Display all cylinders with QR codes
+function displayCylindersWithQR() {
+    const container = document.getElementById('qrCodeDisplay');
+    if (!container) return;
+    
+    container.innerHTML = ''; // Clear previous
+    const cylinders = db.getAll();
+    
+    if (cylinders.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999;">No cylinders in inventory</p>';
+        return;
+    }
+    
+    cylinders.forEach((cylinder, index) => {
+        const qr = generateCylinderQR(cylinder.glp_code, cylinder.weight, index + 1);
+        container.appendChild(qr);
+    });
+}
+
+// Call on page load
+document.addEventListener('DOMContentLoaded', displayCylindersWithQR);
