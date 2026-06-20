@@ -1,3 +1,4 @@
+name=js/app.js url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/js/app.js
 // ============================================
 // UNIFIED LPG CYLINDER INVENTORY APP
 // Single localStorage-based system
@@ -330,7 +331,7 @@ function renderInventory(tab) {
     // Generate QR codes
     cylinders.forEach(c => {
         const canvas = document.createElement('canvas');
-        const container = document.getElementById(`qr-${c.id}`);
+        const qrContainer = document.getElementById(`qr-${c.id}`);
         QRCode.toCanvas(canvas, c.glp, {
             errorCorrectionLevel: 'H',
             type: 'image/png',
@@ -338,7 +339,7 @@ function renderInventory(tab) {
             margin: 1,
             color: { dark: '#000000', light: '#FFFFFF' }
         });
-        container.appendChild(canvas);
+        qrContainer.appendChild(canvas);
     });
 }
 
