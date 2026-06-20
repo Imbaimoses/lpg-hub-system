@@ -3,49 +3,112 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LPG Cylinder Inventory — Modern UI</title>
-
+  <title>LPG Cylinder Inventory</title>
   <link rel="stylesheet" href="styles.css">
-
-  <!-- QR generator (Qrious) -->
+  <!-- QR generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-  <!-- QR scanner (html5-qrcode) -->
+  <!-- QR scanner -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <div id="app" class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="logo" aria-hidden="true">
-          <!-- simple svg logo -->
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="3" width="20" height="18" rx="4" fill="#0B5ED7"/>
-            <path d="M7 9h10v2H7z" fill="white" opacity="0.9"/>
-            <path d="M7 13h6v2H7z" fill="white" opacity="0.9"/>
-          </svg>
-        </div>
-        <div>
-          <div class="title">LPG Cylinder Inventory</div>
-          <div class="subtitle">Simple • Fast • Accurate</div>
-        </div>
-      </div>
-
-      <nav class="main-actions" role="navigation" aria-label="Main actions">
-        <button id="nav-in" class="action-btn" aria-pressed="false">Scan IN</button>
-        <button id="nav-out" class="action-btn" aria-pressed="false">Scan OUT</button>
-        <button id="nav-inv" class="action-btn active" aria-pressed="true">Inventory</button>
+  <div class="app">
+    <header class="top">
+      <h1>LPG Cylinder Inventory</h1>
+      <p class="subtitle">Simple • Fast • Accurate</p>
+      <nav class="nav">
+        <button id="btn-in" class="nav-btn">Scan IN</button>
+        <button id="btn-out" class="nav-btn">Scan OUT</button>
+        <button id="btn-inv" class="nav-btn active">Inventory</button>
       </nav>
+      <div class="note">Local demo • Data stored in your browser (localStorage)</div>
     </header>
 
-    <main id="view" class="view">
-      <!-- screens rendered here -->
-    </main>
+    <main id="main" class="main"></main>
+
+    <!-- Scan IN Modal -->
+    <div id="modal-in" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h2>Scan IN — Register Cylinder</h2>
+        <div class="form">
+          <label>GLP Code
+            <input id="in-glp" placeholder="GLPKEH06779F" />
+            <div id="in-glp-err" class="err"></div>
+          </label>
+
+          <label>Status
+            <select id="in-status">
+              <option>Full</option>
+              <option>Empty</option>
+            </select>
+          </label>
+
+          <label>Brand
+            <select id="in-brand">
+              <option>PayGo</option>
+              <option>Wajiko</option>
+              <option>GreenWells</option>
+            </select>
+          </label>
+
+          <label>Weight (kg)
+            <input id="in-weight" type="number" step="0.1" />
+            <div id="in-weight-err" class="err"></div>
+          </label>
+
+          <div class="row">
+            <button id="in-register" class="btn primary">REGISTER CYLINDER</button>
+            <button id="in-cancel" class="btn">CANCEL</button>
+          </div>
+          <div class="small">Rules: GLP must start with "GLP". Full weight: 24.0–25.0 kg. Empty: 11.0–25.0 kg. Brands fixed.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan OUT Modal -->
+    <div id="modal-out" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <h2>Scan OUT — Remove Cylinder</h2>
+        <div class="scan-options">
+          <button id="out-mode-scan" class="btn primary">Scan QR (Camera)</button>
+          <button id="out-mode-type" class="btn">Type GLP</button>
+        </div>
+
+        <div id="out-scan-area" class="scan-area hidden">
+          <div id="qr-reader" style="width:320px"></div>
+          <div id="out-scan-info" class="small muted">Camera will try to scan a QR. Allow camera access.</div>
+          <div class="row">
+            <button id="out-scan-stop" class="btn">Stop Scanner</button>
+            <button id="out-scan-cancel" class="btn">Cancel</button>
+          </div>
+        </div>
+
+        <div id="out-type-area" class="scan-area hidden">
+          <label>GLP Code
+            <input id="out-glp" placeholder="GLPKEH06779F" />
+            <div id="out-glp-err" class="err"></div>
+          </label>
+          <div class="row">
+            <button id="out-type-search" class="btn primary">FIND</button>
+            <button id="out-type-cancel" class="btn">Cancel</button>
+          </div>
+        </div>
+
+        <div id="out-result" class="result"></div>
+      </div>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qr-modal" class="modal hidden">
+      <div class="modal-card" id="qr-modal-card">
+        <div id="qr-modal-content"></div>
+        <div class="row">
+          <button id="qr-modal-close" class="btn">CLOSE</button>
+        </div>
+      </div>
+    </div>
 
     <footer class="footer">
-      <div class="footer-inner">
-        <div>Local demo • Data stored in your browser (localStorage)</div>
-        <div class="muted">Future: central backend, multi-device sync, printable labels</div>
-      </div>
+      <div id="stats" class="stats"></div>
     </footer>
   </div>
 
