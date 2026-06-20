@@ -1,362 +1,234 @@
 name=js/app.js
-// ============================================
-// LPG CYLINDER INVENTORY SYSTEM
-// Single localStorage-based app
-// ============================================
-
-class CylinderDB {
+// DATABASE
+class DB {
     constructor() {
-        this.storageKey = 'lpg_cylinders';
-        this.loadData();
+        this.key = 'lpg_cyl';
+        this.load();
     }
-
-    loadData() {
+    load() {
         try {
-            const data = localStorage.getItem(this.storageKey);
-            this.cylinders = data ? JSON.parse(data) : [];
-        } catch (e) {
-            this.cylinders = [];
+            this.data = JSON.parse(localStorage.getItem(this.key)) || [];
+        } catch {
+            this.data = [];
         }
     }
-
     save() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.cylinders));
+        localStorage.setItem(this.key, JSON.stringify(this.data));
     }
-
-    addCylinder(glpCode, brand, weight, status) {
-        if (!glpCode || !brand || !weight || !status) {
-            throw new Error('All fields are required');
+    add(glp, brand, weight, status) {
+        glp = glp.trim().toUpperCase();
+        if (this.data.find(c => c.glp === glp && c.state === 'IN')) {
+            throw new Error(`Cylinder ${glp} already exists`);
         }
-
-        glpCode = glpCode.trim().toUpperCase();
-
-        if (this.cylinders.find(c => c.glp === glpCode && c.state === 'IN')) {
-            throw new Error(`Cylinder ${glpCode} already exists in inventory`);
-        }
-
         weight = parseFloat(weight);
-        if (isNaN(weight)) {
-            throw new Error('Weight must be a valid number');
+        if (status === 'Full' && (weight < 24 || weight > 25)) {
+            throw new Error('Full: 24.0-25.0 kg only');
         }
-
-        if (status === 'Full') {
-            if (weight < 24.0 || weight > 25.0) {
-                throw new Error('Full cylinder: 24.0-25.0 kg only');
-            }
-        } else if (status === 'Empty') {
-            if (weight < 11.0 || weight > 25.0) {
-                throw new Error('Empty cylinder: 11.0-25.0 kg only');
-            }
+        if (status === 'Empty' && (weight < 11 || weight > 25)) {
+            throw new Error('Empty: 11.0-25.0 kg only');
         }
-
-        const cylinder = {
-            id: Date.now().toString(),
-            glp: glpCode,
+        const cyl = {
+            id: Date.now(),
+            glp,
             brand,
             weight,
             status,
             state: 'IN',
-            createdAt: new Date().toISOString(),
-            outAt: null
+            createdAt: new Date().toISOString()
         };
-
-        this.cylinders.push(cylinder);
+        this.data.push(cyl);
         this.save();
-        return cylinder;
+        return cyl;
     }
-
-    findByGlp(glpCode) {
-        glpCode = glpCode.trim().toUpperCase();
-        return this.cylinders.find(c => c.glp === glpCode && c.state === 'IN');
+    find(glp) {
+        return this.data.find(c => c.glp === glp.toUpperCase() && c.state === 'IN');
     }
-
-    markAsOut(id) {
-        const cylinder = this.cylinders.find(c => c.id === id);
-        if (cylinder) {
-            cylinder.state = 'OUT';
-            cylinder.outAt = new Date().toISOString();
+    scanOut(id) {
+        const cyl = this.data.find(c => c.id === id);
+        if (cyl) {
+            cyl.state = 'OUT';
             this.save();
         }
-        return cylinder;
+        return cyl;
     }
-
     getInStock() {
-        return this.cylinders.filter(c => c.state === 'IN');
+        return this.data.filter(c => c.state === 'IN');
     }
-
-    getFullCylinders() {
-        return this.cylinders.filter(c => c.state === 'IN' && c.status === 'Full');
+    getFull() {
+        return this.data.filter(c => c.state === 'IN' && c.status === 'Full');
     }
-
-    getEmptyCylinders() {
-        return this.cylinders.filter(c => c.state === 'IN' && c.status === 'Empty');
+    getEmpty() {
+        return this.data.filter(c => c.state === 'IN' && c.status === 'Empty');
     }
-
-    getScannedOut() {
-        return this.cylinders.filter(c => c.state === 'OUT');
+    getOut() {
+        return this.data.filter(c => c.state === 'OUT');
     }
 }
 
-// Initialize
-const db = new CylinderDB();
-let currentCylinderOut = null;
-let currentTab = 'all';
+const db = new DB();
+let selectedCyl = null;
 
-// ============================================
-// SCREEN NAVIGATION
-// ============================================
-function switchScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-    });
-
-    const screen = document.getElementById(screenId);
-    if (screen) {
-        screen.classList.add('active');
-    }
-
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.screen === screenId) {
-            btn.classList.add('active');
-        }
-    });
-
-    if (screenId === 'inventory') {
+// SCREEN SWITCHING
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+    
+    document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+    if (screenId === 'screenScanIn') document.getElementById('btnScanIn').classList.add('active');
+    if (screenId === 'screenScanOut') document.getElementById('btnScanOut').classList.add('active');
+    if (screenId === 'screenInventory') {
+        document.getElementById('btnInventory').classList.add('active');
         updateStats();
-        renderInventory('all');
+        showTab('all');
     }
 }
 
-// ============================================
-// STATISTICS
-// ============================================
-function updateStats() {
-    document.getElementById('totalInStock').textContent = db.getInStock().length;
-    document.getElementById('fullCount').textContent = db.getFullCylinders().length;
-    document.getElementById('emptyCount').textContent = db.getEmptyCylinders().length;
-    document.getElementById('scannedOutCount').textContent = db.getScannedOut().length;
-}
+// NAV BUTTONS
+document.getElementById('btnScanIn').addEventListener('click', () => showScreen('screenScanIn'));
+document.getElementById('btnScanOut').addEventListener('click', () => showScreen('screenScanOut'));
+document.getElementById('btnInventory').addEventListener('click', () => showScreen('screenInventory'));
 
-// ============================================
 // SCAN IN
-// ============================================
-document.getElementById('scanInForm').addEventListener('submit', function(e) {
+document.getElementById('formScanIn').addEventListener('submit', (e) => {
     e.preventDefault();
-
-    const glpCode = document.getElementById('inGlpCode').value;
-    const brand = document.getElementById('inBrand').value;
-    const weight = document.getElementById('inWeight').value;
-    const status = document.getElementById('inStatus').value;
-
-    const msgDiv = document.getElementById('inMessage');
-    msgDiv.classList.remove('success', 'error');
-
+    const glp = document.getElementById('glpCode').value;
+    const brand = document.getElementById('brand').value;
+    const weight = document.getElementById('weight').value;
+    const status = document.getElementById('status').value;
+    const msg = document.getElementById('msgScanIn');
+    
     try {
-        const cylinder = db.addCylinder(glpCode, brand, weight, status);
-
-        msgDiv.className = 'message success';
-        msgDiv.textContent = `✓ Cylinder ${cylinder.glp} registered successfully!`;
-
-        const canvas = document.getElementById('inQrCanvas');
-        QRCode.toCanvas(canvas, cylinder.glp, {
-            errorCorrectionLevel: 'H',
-            type: 'image/png',
-            width: 200,
-            margin: 1,
-            color: { dark: '#000000', light: '#FFFFFF' }
-        });
-        document.getElementById('inQrText').textContent = `GLP Code: ${cylinder.glp}`;
-        document.getElementById('inQrContainer').style.display = 'block';
-
-        this.reset();
-        updateStats();
-
-        setTimeout(() => msgDiv.classList.remove('success'), 5000);
-
-    } catch (error) {
-        msgDiv.className = 'message error';
-        msgDiv.textContent = `✗ ${error.message}`;
-        document.getElementById('inQrContainer').style.display = 'none';
+        const cyl = db.add(glp, brand, weight, status);
+        msg.className = 'message success';
+        msg.textContent = `✓ Cylinder ${cyl.glp} registered!`;
+        
+        const canvas = document.getElementById('qrCanvasScanIn');
+        QRCode.toCanvas(canvas, cyl.glp, {errorCorrectionLevel: 'H', width: 200, margin: 1});
+        document.getElementById('qrTextScanIn').textContent = `GLP: ${cyl.glp}`;
+        document.getElementById('qrScanIn').style.display = 'block';
+        
+        document.getElementById('formScanIn').reset();
+        setTimeout(() => msg.className = '', 5000);
+    } catch (err) {
+        msg.className = 'message error';
+        msg.textContent = `✗ ${err.message}`;
+        document.getElementById('qrScanIn').style.display = 'none';
     }
 });
 
-// ============================================
 // SCAN OUT
-// ============================================
-document.getElementById('scanOutForm').addEventListener('submit', function(e) {
+document.getElementById('formScanOut').addEventListener('submit', (e) => {
     e.preventDefault();
-
-    const glpCode = document.getElementById('outGlpCode').value;
-    const msgDiv = document.getElementById('outMessage');
-    const detailsDiv = document.getElementById('outDetails');
-
-    msgDiv.classList.remove('success', 'error');
-    detailsDiv.style.display = 'none';
-
+    const glp = document.getElementById('glpCodeOut').value;
+    const msg = document.getElementById('msgScanOut');
+    const info = document.getElementById('cylinderInfo');
+    
+    info.style.display = 'none';
+    
     try {
-        const cylinder = db.findByGlp(glpCode);
-
-        if (!cylinder) {
-            throw new Error(`Cylinder ${glpCode} not found`);
-        }
-
-        currentCylinderOut = cylinder;
-
-        document.getElementById('outGlp').textContent = cylinder.glp;
-        document.getElementById('outBrand').textContent = cylinder.brand;
-        document.getElementById('outWeight').textContent = `${cylinder.weight} kg`;
-        document.getElementById('outStatus').textContent = cylinder.status;
-
-        const statusBadge = document.getElementById('outStatusBadge');
-        statusBadge.className = `detail-status status-${cylinder.status.toLowerCase()}`;
-        statusBadge.textContent = cylinder.status;
-
-        const canvas = document.getElementById('outQrCanvas');
-        QRCode.toCanvas(canvas, cylinder.glp, {
-            errorCorrectionLevel: 'H',
-            type: 'image/png',
-            width: 150,
-            margin: 1,
-            color: { dark: '#000000', light: '#FFFFFF' }
-        });
-
-        detailsDiv.style.display = 'block';
-        msgDiv.className = 'message success';
-        msgDiv.textContent = '✓ Cylinder found. Click "Confirm Scan Out" to complete.';
-
-    } catch (error) {
-        msgDiv.className = 'message error';
-        msgDiv.textContent = `✗ ${error.message}`;
+        const cyl = db.find(glp);
+        if (!cyl) throw new Error('Cylinder not found');
+        
+        selectedCyl = cyl;
+        document.getElementById('infGlp').textContent = cyl.glp;
+        document.getElementById('infBrand').textContent = cyl.brand;
+        document.getElementById('infWeight').textContent = `${cyl.weight} kg`;
+        document.getElementById('infStatus').textContent = cyl.status;
+        
+        const badge = document.getElementById('statusBadge');
+        badge.className = `badge ${cyl.status.toLowerCase()}`;
+        badge.textContent = cyl.status;
+        
+        const canvas = document.getElementById('qrCanvasScanOut');
+        QRCode.toCanvas(canvas, cyl.glp, {errorCorrectionLevel: 'H', width: 150, margin: 1});
+        
+        info.style.display = 'block';
+        msg.className = 'message success';
+        msg.textContent = '✓ Cylinder found!';
+    } catch (err) {
+        msg.className = 'message error';
+        msg.textContent = `✗ ${err.message}`;
     }
 });
 
-document.getElementById('confirmOutBtn').addEventListener('click', function() {
-    if (!currentCylinderOut) return;
-
+document.getElementById('btnConfirmOut').addEventListener('click', () => {
+    if (!selectedCyl) return;
+    const msg = document.getElementById('msgScanOut');
+    
     try {
-        db.markAsOut(currentCylinderOut.id);
-
-        const msgDiv = document.getElementById('outMessage');
-        msgDiv.className = 'message success';
-        msgDiv.textContent = `✓ Cylinder ${currentCylinderOut.glp} scanned out successfully!`;
-
-        document.getElementById('outDetails').style.display = 'none';
-        document.getElementById('scanOutForm').reset();
-        currentCylinderOut = null;
-
-        updateStats();
-
-        setTimeout(() => msgDiv.classList.remove('success'), 5000);
-
-    } catch (error) {
-        const msgDiv = document.getElementById('outMessage');
-        msgDiv.className = 'message error';
-        msgDiv.textContent = `✗ ${error.message}`;
+        db.scanOut(selectedCyl.id);
+        msg.className = 'message success';
+        msg.textContent = `✓ Cylinder ${selectedCyl.glp} scanned out!`;
+        document.getElementById('cylinderInfo').style.display = 'none';
+        document.getElementById('formScanOut').reset();
+        selectedCyl = null;
+        setTimeout(() => msg.className = '', 5000);
+    } catch (err) {
+        msg.className = 'message error';
+        msg.textContent = `✗ ${err.message}`;
     }
 });
 
-// ============================================
-// INVENTORY TABS
-// ============================================
-function renderInventory(tabType) {
-    currentTab = tabType;
-    let cylinders;
+// INVENTORY
+function updateStats() {
+    document.getElementById('statTotal').textContent = db.getInStock().length;
+    document.getElementById('statFull').textContent = db.getFull().length;
+    document.getElementById('statEmpty').textContent = db.getEmpty().length;
+    document.getElementById('statOut').textContent = db.getOut().length;
+}
 
-    if (tabType === 'all') {
-        cylinders = db.getInStock();
-    } else if (tabType === 'full') {
-        cylinders = db.getFullCylinders();
-    } else if (tabType === 'empty') {
-        cylinders = db.getEmptyCylinders();
-    }
-
-    document.querySelectorAll('.inventory-tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.invTab === tabType) {
-            btn.classList.add('active');
-        }
-    });
-
-    const container = document.getElementById('inventoryContent');
-
-    if (cylinders.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No cylinders in this category</p></div>';
+function showTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (tab === 'all') document.getElementById('tabAll').classList.add('active');
+    if (tab === 'full') document.getElementById('tabFull').classList.add('active');
+    if (tab === 'empty') document.getElementById('tabEmpty').classList.add('active');
+    
+    let cyls = [];
+    if (tab === 'all') cyls = db.getInStock();
+    if (tab === 'full') cyls = db.getFull();
+    if (tab === 'empty') cyls = db.getEmpty();
+    
+    const list = document.getElementById('cylindersList');
+    if (cyls.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No cylinders</p></div>';
         return;
     }
-
-    const html = cylinders.map(c => `
+    
+    list.innerHTML = cyls.map(c => `
         <div class="cylinder-card">
             <div class="card-header">
-                <div class="glp-code">${c.glp}</div>
-                <span class="status-badge status-${c.status.toLowerCase()}">${c.status}</span>
+                <div class="card-glp">${c.glp}</div>
+                <span class="card-status status-${c.status.toLowerCase()}">${c.status}</span>
             </div>
-            <div class="card-info">
-                <div class="info-row">
-                    <span class="info-label">Brand:</span>
-                    <span>${c.brand}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Weight:</span>
-                    <span>${c.weight} kg</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Created:</span>
-                    <span>${new Date(c.createdAt).toLocaleDateString()}</span>
-                </div>
+            <div class="card-details">
+                <div class="detail"><span class="key">Brand:</span><span>${c.brand}</span></div>
+                <div class="detail"><span class="key">Weight:</span><span>${c.weight} kg</span></div>
+                <div class="detail"><span class="key">Date:</span><span>${new Date(c.createdAt).toLocaleDateString()}</span></div>
             </div>
             <div class="card-qr" id="qr-${c.id}"></div>
-            <button class="card-button" onclick="quickScanOut('${c.id}')">Scan Out</button>
+            <button class="card-button" onclick="quickOut(${c.id})">Scan Out</button>
         </div>
     `).join('');
-
-    container.innerHTML = html;
-
-    cylinders.forEach(c => {
-        const qrContainer = document.getElementById(`qr-${c.id}`);
-        if (qrContainer && qrContainer.children.length === 0) {
-            const canvas = document.createElement('canvas');
-            QRCode.toCanvas(canvas, c.glp, {
-                errorCorrectionLevel: 'H',
-                type: 'image/png',
-                width: 160,
-                margin: 1,
-                color: { dark: '#000000', light: '#FFFFFF' }
-            });
-            qrContainer.appendChild(canvas);
-        }
+    
+    cyls.forEach(c => {
+        const canvas = document.createElement('canvas');
+        QRCode.toCanvas(canvas, c.glp, {errorCorrectionLevel: 'H', width: 150, margin: 1});
+        document.getElementById(`qr-${c.id}`).appendChild(canvas);
     });
 }
 
-function quickScanOut(cylinderId) {
-    const cylinder = db.cylinders.find(c => c.id === cylinderId);
-    if (cylinder) {
-        document.getElementById('outGlpCode').value = cylinder.glp;
-        switchScreen('scan-out');
-        setTimeout(() => {
-            document.getElementById('scanOutForm').dispatchEvent(new Event('submit'));
-        }, 100);
+function quickOut(id) {
+    const cyl = db.data.find(c => c.id === id);
+    if (cyl) {
+        document.getElementById('glpCodeOut').value = cyl.glp;
+        showScreen('screenScanOut');
+        setTimeout(() => document.getElementById('formScanOut').dispatchEvent(new Event('submit')), 100);
     }
 }
 
-// ============================================
-// EVENT LISTENERS
-// ============================================
-document.querySelectorAll('.inventory-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        renderInventory(btn.dataset.invTab);
-    });
-});
+document.getElementById('tabAll').addEventListener('click', () => showTab('all'));
+document.getElementById('tabFull').addEventListener('click', () => showTab('full'));
+document.getElementById('tabEmpty').addEventListener('click', () => showTab('empty'));
 
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        switchScreen(btn.dataset.screen);
-    });
-});
-
-// ============================================
-// INITIALIZE
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    updateStats();
-});
+// INIT
+showScreen('screenScanIn');
