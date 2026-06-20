@@ -3,33 +3,51 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LPG Cylinder Inventory</title>
+  <title>LPG Cylinder Inventory — Modern UI</title>
+
   <link rel="stylesheet" href="styles.css">
+
   <!-- QR generator (Qrious) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-  <!-- QR scanner -->
+  <!-- QR scanner (html5-qrcode) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <main class="container">
-    <header>
-      <h1>LPG Cylinder Inventory System</h1>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <!-- simple svg logo -->
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="3" width="20" height="18" rx="4" fill="#0B5ED7"/>
+            <path d="M7 9h10v2H7z" fill="white" opacity="0.9"/>
+            <path d="M7 13h6v2H7z" fill="white" opacity="0.9"/>
+          </svg>
+        </div>
+        <div>
+          <div class="title">LPG Cylinder Inventory</div>
+          <div class="subtitle">Simple • Fast • Accurate</div>
+        </div>
+      </div>
+
+      <nav class="main-actions" role="navigation" aria-label="Main actions">
+        <button id="nav-in" class="action-btn" aria-pressed="false">Scan IN</button>
+        <button id="nav-out" class="action-btn" aria-pressed="false">Scan OUT</button>
+        <button id="nav-inv" class="action-btn active" aria-pressed="true">Inventory</button>
+      </nav>
     </header>
 
-    <nav class="main-nav">
-      <button id="btn-scan-in" class="nav-btn">Scan IN</button>
-      <button id="btn-scan-out" class="nav-btn">Scan OUT</button>
-      <button id="btn-inventory" class="nav-btn">Inventory</button>
-    </nav>
-
-    <section id="content">
-      <!-- dynamic content renders here -->
-    </section>
+    <main id="view" class="view">
+      <!-- screens rendered here -->
+    </main>
 
     <footer class="footer">
-      <small>Simple inventory — localStorage. Future: backend + DB + hosted scanner.</small>
+      <div class="footer-inner">
+        <div>Local demo • Data stored in your browser (localStorage)</div>
+        <div class="muted">Future: central backend, multi-device sync, printable labels</div>
+      </div>
     </footer>
-  </main>
+  </div>
 
   <script src="app.js"></script>
 </body>
