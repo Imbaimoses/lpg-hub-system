@@ -1,3 +1,4 @@
+name=index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,81 +14,21 @@
             <p class="subtitle">Depot Inventory Management System</p>
         </header>
 
+        <!-- ONLY 3 BUTTONS AS PER SPEC -->
         <nav class="navbar">
-            <button class="nav-btn active" data-screen="dashboard">
-                <span>📊</span> Dashboard
-            </button>
-            <button class="nav-btn" data-screen="scan-in">
+            <button class="nav-btn active" data-screen="scan-in">
                 <span>📥</span> Scan IN
             </button>
             <button class="nav-btn" data-screen="scan-out">
                 <span>📤</span> Scan OUT
             </button>
-            <button class="nav-btn" data-screen="inventory-all">
-                <span>📦</span> All Inventory
-            </button>
-            <button class="nav-btn" data-screen="inventory-full">
-                <span>✅</span> Full Only
-            </button>
-            <button class="nav-btn" data-screen="inventory-empty">
-                <span>⚪</span> Empty Only
+            <button class="nav-btn" data-screen="inventory">
+                <span>📦</span> Inventory
             </button>
         </nav>
 
-        <!-- Dashboard Screen -->
-        <div id="dashboard" class="screen active">
-            <div class="screen-content">
-                <h2>📊 Dashboard</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">📦</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="dashTotal">0</div>
-                            <div class="stat-label">Total In Stock</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">✅</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="dashFull">0</div>
-                            <div class="stat-label">Full Cylinders</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">⚪</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="dashEmpty">0</div>
-                            <div class="stat-label">Empty Cylinders</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📤</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="dashOut">0</div>
-                            <div class="stat-label">Scanned Out</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="dashboard-actions">
-                    <button class="action-btn" onclick="switchScreen('scan-in')">
-                        <span class="action-icon">➕</span>
-                        <span>Add Cylinder</span>
-                    </button>
-                    <button class="action-btn" onclick="switchScreen('scan-out')">
-                        <span class="action-icon">➖</span>
-                        <span>Remove Cylinder</span>
-                    </button>
-                    <button class="action-btn" onclick="switchScreen('inventory-all')">
-                        <span class="action-icon">📋</span>
-                        <span>View Inventory</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <!-- Scan IN Screen -->
-        <div id="scan-in" class="screen">
+        <div id="scan-in" class="screen active">
             <div class="screen-content">
                 <div class="screen-header">
                     <h2>📥 Scan In Cylinder</h2>
@@ -120,6 +61,7 @@
                     <div class="form-group">
                         <label for="inWeight">Weight (kg) *</label>
                         <input type="number" id="inWeight" placeholder="e.g., 24.5" step="0.1" required>
+                        <small class="weight-hint">Full: 24.0-25.0 kg | Empty: 11.0-25.0 kg</small>
                     </div>
                     <button type="submit" class="btn btn-primary">Register Cylinder</button>
                 </form>
@@ -183,36 +125,48 @@
             </div>
         </div>
 
-        <!-- Inventory All Screen -->
-        <div id="inventory-all" class="screen">
+        <!-- Inventory Screen -->
+        <div id="inventory" class="screen">
             <div class="screen-content">
                 <div class="screen-header">
-                    <h2>📦 All Cylinders</h2>
-                    <p>All cylinders currently in stock</p>
+                    <h2>📦 Inventory</h2>
+                    <p>View cylinders by category</p>
                 </div>
-                <div id="inventoryAll" class="inventory-container"></div>
-            </div>
-        </div>
 
-        <!-- Inventory Full Screen -->
-        <div id="inventory-full" class="screen">
-            <div class="screen-content">
-                <div class="screen-header">
-                    <h2>✅ Full Cylinders</h2>
-                    <p>Cylinders with full status only</p>
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-number" id="totalInStock">0</div>
+                        <div class="stat-text">Total In Stock</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="fullCount">0</div>
+                        <div class="stat-text">Full Cylinders</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="emptyCount">0</div>
+                        <div class="stat-text">Empty Cylinders</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="scannedOutCount">0</div>
+                        <div class="stat-text">Scanned Out</div>
+                    </div>
                 </div>
-                <div id="inventoryFull" class="inventory-container"></div>
-            </div>
-        </div>
 
-        <!-- Inventory Empty Screen -->
-        <div id="inventory-empty" class="screen">
-            <div class="screen-content">
-                <div class="screen-header">
-                    <h2>⚪ Empty Cylinders</h2>
-                    <p>Cylinders with empty status only</p>
+                <!-- Inventory Tabs -->
+                <div class="inventory-tabs">
+                    <button class="inventory-tab-btn active" data-inv-tab="all">
+                        <span>📋</span> All Cylinders
+                    </button>
+                    <button class="inventory-tab-btn" data-inv-tab="full">
+                        <span>✅</span> Full Cylinders
+                    </button>
+                    <button class="inventory-tab-btn" data-inv-tab="empty">
+                        <span>⚪</span> Empty Cylinders
+                    </button>
                 </div>
-                <div id="inventoryEmpty" class="inventory-container"></div>
+
+                <div id="inventoryContent" class="inventory-container"></div>
             </div>
         </div>
     </div>
