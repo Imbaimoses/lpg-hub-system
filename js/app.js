@@ -1,4 +1,3 @@
-name=js/app.js url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/js/app.js
 // ============================================
 // UNIFIED LPG CYLINDER INVENTORY APP
 // Single localStorage-based system
@@ -109,7 +108,6 @@ class CylinderDB {
 // ============================================
 const db = new CylinderDB();
 let currentCylinderOut = null;
-let currentTab = 'all';
 
 // ============================================
 // SCREEN NAVIGATION
@@ -137,8 +135,12 @@ function switchScreen(screenId) {
     // Screen-specific actions
     if (screenId === 'dashboard') {
         updateDashboard();
-    } else if (screenId === 'inventory') {
+    } else if (screenId === 'inventory-all') {
         renderInventory('all');
+    } else if (screenId === 'inventory-full') {
+        renderInventory('full');
+    } else if (screenId === 'inventory-empty') {
+        renderInventory('empty');
     }
 }
 
@@ -182,7 +184,7 @@ document.getElementById('scanInForm').addEventListener('submit', function(e) {
             margin: 1,
             color: { dark: '#000000', light: '#FFFFFF' }
         });
-        document.getElementById('inQrText').textContent = `GLP: ${cylinder.glp}`;
+        document.getElementById('inQrText').textContent = `GLP Code: ${cylinder.glp}`;
         document.getElementById('inQrContainer').style.display = 'block';
 
         // Clear form
@@ -227,6 +229,11 @@ document.getElementById('scanOutForm').addEventListener('submit', function(e) {
         document.getElementById('outBrand').textContent = cylinder.brand;
         document.getElementById('outWeight').textContent = `${cylinder.weight} kg`;
         document.getElementById('outStatus').textContent = cylinder.status;
+        
+        // Status badge
+        const statusBadge = document.getElementById('outStatusBadge');
+        statusBadge.className = `detail-status status-${cylinder.status.toLowerCase()}`;
+        statusBadge.textContent = cylinder.status;
 
         // Generate QR
         const canvas = document.getElementById('outQrCanvas');
@@ -276,29 +283,24 @@ document.getElementById('confirmOutBtn').addEventListener('click', function() {
 });
 
 // ============================================
-// INVENTORY WITH TABS
+// INVENTORY SCREENS
 // ============================================
-function renderInventory(tab) {
-    currentTab = tab;
+function renderInventory(type) {
     let cylinders;
+    let containerId;
 
-    if (tab === 'all') {
+    if (type === 'all') {
         cylinders = db.getInStock();
-    } else if (tab === 'full') {
+        containerId = 'inventoryAll';
+    } else if (type === 'full') {
         cylinders = db.getFullCylinders();
-    } else if (tab === 'empty') {
+        containerId = 'inventoryFull';
+    } else if (type === 'empty') {
         cylinders = db.getEmptyCylinders();
+        containerId = 'inventoryEmpty';
     }
 
-    // Update active tab button
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.tab === tab) {
-            btn.classList.add('active');
-        }
-    });
-
-    const container = document.getElementById('inventoryContent');
+    const container = document.getElementById(containerId);
 
     if (cylinders.length === 0) {
         container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><p>No cylinders in this category</p></div>`;
@@ -320,26 +322,32 @@ function renderInventory(tab) {
                     <span class="info-label">Weight:</span>
                     <span>${c.weight} kg</span>
                 </div>
+                <div class="info-row">
+                    <span class="info-label">Created:</span>
+                    <span>${new Date(c.createdAt).toLocaleDateString()}</span>
+                </div>
             </div>
             <div class="card-qr" id="qr-${c.id}"></div>
             <button class="card-button" onclick="quickScanOut('${c.id}')">Scan Out</button>
         </div>
     `).join('');
 
-    container.innerHTML = `<div class="cards-grid">${html}</div>`;
+    container.innerHTML = `<div class="inventory-container">${html}</div>`;
 
     // Generate QR codes
     cylinders.forEach(c => {
-        const canvas = document.createElement('canvas');
         const qrContainer = document.getElementById(`qr-${c.id}`);
-        QRCode.toCanvas(canvas, c.glp, {
-            errorCorrectionLevel: 'H',
-            type: 'image/png',
-            width: 140,
-            margin: 1,
-            color: { dark: '#000000', light: '#FFFFFF' }
-        });
-        qrContainer.appendChild(canvas);
+        if (qrContainer && qrContainer.children.length === 0) {
+            const canvas = document.createElement('canvas');
+            QRCode.toCanvas(canvas, c.glp, {
+                errorCorrectionLevel: 'H',
+                type: 'image/png',
+                width: 160,
+                margin: 1,
+                color: { dark: '#000000', light: '#FFFFFF' }
+            });
+            qrContainer.appendChild(canvas);
+        }
     });
 }
 
@@ -353,15 +361,6 @@ function quickScanOut(cylinderId) {
         }, 100);
     }
 }
-
-// ============================================
-// TAB BUTTONS
-// ============================================
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        renderInventory(btn.dataset.tab);
-    });
-});
 
 // ============================================
 // NAV BUTTONS
