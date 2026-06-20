@@ -79,11 +79,9 @@ class CylinderDB {
     markAsOut(id) {
         const cylinder = this.cylinders.find(c => c.id === id);
         if (cylinder) {
-            cylinder.state = 'OUT';
-            cylinder.outAt = new Date().toISOString();
+            cylinder.state = 'OUT';\n            cylinder.outAt = new Date().toISOString();
             this.save();
-        }
-        return cylinder;
+        }\n        return cylinder;
     }
 
     getInStock() {
@@ -108,6 +106,7 @@ class CylinderDB {
 // ============================================
 const db = new CylinderDB();
 let currentCylinderOut = null;
+let currentInventoryTab = 'all';
 
 // ============================================
 // SCREEN NAVIGATION
@@ -135,18 +134,11 @@ function switchScreen(screenId) {
     // Screen-specific actions
     if (screenId === 'dashboard') {
         updateDashboard();
-    } else if (screenId === 'inventory-all') {
-        renderInventory('all');
-    } else if (screenId === 'inventory-full') {
-        renderInventory('full');
-    } else if (screenId === 'inventory-empty') {
-        renderInventory('empty');
-    }
+    } else if (screenId === 'inventory') {\n        renderInventory('all');\n    }
 }
 
 // ============================================
-// DASHBOARD
-// ============================================
+// DASHBOARD\n// ============================================
 function updateDashboard() {
     document.getElementById('dashTotal').textContent = db.getInStock().length;
     document.getElementById('dashFull').textContent = db.getFullCylinders().length;
@@ -229,7 +221,7 @@ document.getElementById('scanOutForm').addEventListener('submit', function(e) {
         document.getElementById('outBrand').textContent = cylinder.brand;
         document.getElementById('outWeight').textContent = `${cylinder.weight} kg`;
         document.getElementById('outStatus').textContent = cylinder.status;
-        
+
         // Status badge
         const statusBadge = document.getElementById('outStatusBadge');
         statusBadge.className = `detail-status status-${cylinder.status.toLowerCase()}`;
@@ -247,7 +239,7 @@ document.getElementById('scanOutForm').addEventListener('submit', function(e) {
 
         detailsDiv.style.display = 'block';
         msgDiv.className = 'message success';
-        msgDiv.textContent = '✓ Cylinder found. Click "Confirm Scan Out" to complete.';
+        msgDiv.textContent = '✓ Cylinder found. Click \"Confirm Scan Out\" to complete.';
 
     } catch (error) {
         msgDiv.className = 'message error';
@@ -283,56 +275,60 @@ document.getElementById('confirmOutBtn').addEventListener('click', function() {
 });
 
 // ============================================
-// INVENTORY SCREENS
+// INVENTORY WITH TABS
 // ============================================
-function renderInventory(type) {
+function renderInventory(tabType) {
+    currentInventoryTab = tabType;
     let cylinders;
-    let containerId;
 
-    if (type === 'all') {
+    if (tabType === 'all') {
         cylinders = db.getInStock();
-        containerId = 'inventoryAll';
-    } else if (type === 'full') {
+    } else if (tabType === 'full') {
         cylinders = db.getFullCylinders();
-        containerId = 'inventoryFull';
-    } else if (type === 'empty') {
+    } else if (tabType === 'empty') {
         cylinders = db.getEmptyCylinders();
-        containerId = 'inventoryEmpty';
     }
 
-    const container = document.getElementById(containerId);
+    // Update active tab button\n    document.querySelectorAll('.inventory-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.invTab === tabType) {
+            btn.classList.add('active');
+        }
+    });
+
+    const container = document.getElementById('inventoryContent');
 
     if (cylinders.length === 0) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><p>No cylinders in this category</p></div>`;
+        container.innerHTML = `<div class=\"empty-state\"><div class=\"empty-state-icon\">📭</div><p>No cylinders in this category</p></div>`;
         return;
     }
 
     const html = cylinders.map(c => `
-        <div class="cylinder-card">
-            <div class="card-header">
-                <div class="glp-code">${c.glp}</div>
-                <span class="status-badge status-${c.status.toLowerCase()}">${c.status}</span>
+        <div class=\"cylinder-card\">
+            <div class=\"card-header\">
+                <div class=\"glp-code\">${c.glp}</div>
+                <span class=\"status-badge status-${c.status.toLowerCase()}\">${c.status}</span>
             </div>
-            <div class="card-info">
-                <div class="info-row">
-                    <span class="info-label">Brand:</span>
+            <div class=\"card-info\">
+                <div class=\"info-row\">
+                    <span class=\"info-label\">Brand:</span>
                     <span>${c.brand}</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Weight:</span>
+                <div class=\"info-row\">
+                    <span class=\"info-label\">Weight:</span>
                     <span>${c.weight} kg</span>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Created:</span>
+                <div class=\"info-row\">
+                    <span class=\"info-label\">Created:</span>
                     <span>${new Date(c.createdAt).toLocaleDateString()}</span>
                 </div>
             </div>
-            <div class="card-qr" id="qr-${c.id}"></div>
-            <button class="card-button" onclick="quickScanOut('${c.id}')">Scan Out</button>
+            <div class=\"card-qr\" id=\"qr-${c.id}\"></div>
+            <button class=\"card-button\" onclick=\"quickScanOut('${c.id}')\">Scan Out</button>
         </div>
     `).join('');
 
-    container.innerHTML = `<div class="inventory-container">${html}</div>`;
+    container.innerHTML = html;
 
     // Generate QR codes
     cylinders.forEach(c => {
@@ -361,6 +357,15 @@ function quickScanOut(cylinderId) {
         }, 100);
     }
 }
+
+// ============================================
+// INVENTORY TAB BUTTONS
+// ============================================
+document.querySelectorAll('.inventory-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        renderInventory(btn.dataset.invTab);
+    });
+});
 
 // ============================================
 // NAV BUTTONS
