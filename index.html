@@ -1,4 +1,3 @@
-name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,8 +23,14 @@ name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index
             <button class="nav-btn" data-screen="scan-out">
                 <span>📤</span> Scan OUT
             </button>
-            <button class="nav-btn" data-screen="inventory">
-                <span>📦</span> Inventory
+            <button class="nav-btn" data-screen="inventory-all">
+                <span>📦</span> All Inventory
+            </button>
+            <button class="nav-btn" data-screen="inventory-full">
+                <span>✅</span> Full Only
+            </button>
+            <button class="nav-btn" data-screen="inventory-empty">
+                <span>⚪</span> Empty Only
             </button>
         </nav>
 
@@ -35,21 +40,48 @@ name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index
                 <h2>📊 Dashboard</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-value" id="dashTotal">0</div>
-                        <div class="stat-label">Total In Stock</div>
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="dashTotal">0</div>
+                            <div class="stat-label">Total In Stock</div>
+                        </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="dashFull">0</div>
-                        <div class="stat-label">Full Cylinders</div>
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="dashFull">0</div>
+                            <div class="stat-label">Full Cylinders</div>
+                        </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="dashEmpty">0</div>
-                        <div class="stat-label">Empty Cylinders</div>
+                        <div class="stat-icon">⚪</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="dashEmpty">0</div>
+                            <div class="stat-label">Empty Cylinders</div>
+                        </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="dashOut">0</div>
-                        <div class="stat-label">Scanned Out</div>
+                        <div class="stat-icon">📤</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="dashOut">0</div>
+                            <div class="stat-label">Scanned Out</div>
+                        </div>
                     </div>
+                </div>
+
+                <div class="dashboard-actions">
+                    <button class="action-btn" onclick="switchScreen('scan-in')">
+                        <span class="action-icon">➕</span>
+                        <span>Add Cylinder</span>
+                    </button>
+                    <button class="action-btn" onclick="switchScreen('scan-out')">
+                        <span class="action-icon">➖</span>
+                        <span>Remove Cylinder</span>
+                    </button>
+                    <button class="action-btn" onclick="switchScreen('inventory-all')">
+                        <span class="action-icon">📋</span>
+                        <span>View Inventory</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -57,28 +89,33 @@ name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index
         <!-- Scan IN Screen -->
         <div id="scan-in" class="screen">
             <div class="screen-content">
-                <h2>📥 Scan In Cylinder</h2>
-                <form id="scanInForm">
+                <div class="screen-header">
+                    <h2>📥 Scan In Cylinder</h2>
+                    <p>Register a new cylinder in the inventory</p>
+                </div>
+                <form id="scanInForm" class="form-box">
                     <div class="form-group">
                         <label for="inGlpCode">GLP Code *</label>
                         <input type="text" id="inGlpCode" placeholder="e.g., GLPKEH06779F" required>
                     </div>
-                    <div class="form-group">
-                        <label for="inBrand">Brand *</label>
-                        <select id="inBrand" required>
-                            <option value="">Select Brand</option>
-                            <option value="PayGo">PayGo</option>
-                            <option value="Wajiko">Wajiko</option>
-                            <option value="Greenwells">Greenwells</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="inStatus">Status *</label>
-                        <select id="inStatus" required>
-                            <option value="">Select Status</option>
-                            <option value="Full">Full</option>
-                            <option value="Empty">Empty</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="inBrand">Brand *</label>
+                            <select id="inBrand" required>
+                                <option value="">Select Brand</option>
+                                <option value="PayGo">PayGo</option>
+                                <option value="Wajiko">Wajiko</option>
+                                <option value="Greenwells">Greenwells</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="inStatus">Status *</label>
+                            <select id="inStatus" required>
+                                <option value="">Select Status</option>
+                                <option value="Full">Full</option>
+                                <option value="Empty">Empty</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="inWeight">Weight (kg) *</label>
@@ -87,10 +124,14 @@ name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index
                     <button type="submit" class="btn btn-primary">Register Cylinder</button>
                 </form>
                 <div id="inMessage" class="message"></div>
-                <div id="inQrContainer" style="display: none; margin-top: 30px; text-align: center;">
-                    <h3>✓ QR Code Generated</h3>
-                    <canvas id="inQrCanvas" style="max-width: 200px; margin: 20px auto; border: 2px solid #ddd; padding: 10px; border-radius: 8px;"></canvas>
-                    <p id="inQrText" style="margin-top: 10px; font-weight: bold;"></p>
+                <div id="inQrContainer" class="qr-result" style="display: none;">
+                    <div class="qr-success">
+                        <div class="qr-success-icon">✓</div>
+                        <h3>QR Code Generated</h3>
+                        <canvas id="inQrCanvas"></canvas>
+                        <p id="inQrText"></p>
+                        <p class="qr-instruction">Scan this QR code from your phone or laptop for verification</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -98,8 +139,11 @@ name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index
         <!-- Scan OUT Screen -->
         <div id="scan-out" class="screen">
             <div class="screen-content">
-                <h2>📤 Scan Out Cylinder</h2>
-                <form id="scanOutForm">
+                <div class="screen-header">
+                    <h2>📤 Scan Out Cylinder</h2>
+                    <p>Remove a cylinder from inventory</p>
+                </div>
+                <form id="scanOutForm" class="form-box">
                     <div class="form-group">
                         <label for="outGlpCode">GLP Code *</label>
                         <input type="text" id="outGlpCode" placeholder="e.g., GLPKEH06779F" required>
@@ -108,38 +152,74 @@ name=index.html url=https://github.com/Imbaimoses/lpg-hub-system/blob/main/index
                 </form>
                 <div id="outMessage" class="message"></div>
 
-                <div id="outDetails" style="display: none; margin-top: 30px; background: #f9f9f9; padding: 20px; border-radius: 8px;">
-                    <div style="display: grid; gap: 12px; margin-bottom: 20px;">
-                        <div><strong>GLP:</strong> <span id="outGlp"></span></div>
-                        <div><strong>Brand:</strong> <span id="outBrand"></span></div>
-                        <div><strong>Weight:</strong> <span id="outWeight"></span></div>
-                        <div><strong>Status:</strong> <span id="outStatus"></span></div>
+                <div id="outDetails" class="cylinder-details-box" style="display: none;">
+                    <div class="detail-header">
+                        <h3>Cylinder Details</h3>
+                        <div class="detail-status" id="outStatusBadge"></div>
                     </div>
-                    <div style="text-align: center; margin: 20px 0; padding: 20px; background: white; border-radius: 8px;">
-                        <canvas id="outQrCanvas" style="max-width: 150px; border: 1px solid #ddd; padding: 8px;"></canvas>
+                    <div class="detail-info">
+                        <div class="info-item">
+                            <span class="info-label">GLP Code</span>
+                            <span class="info-value" id="outGlp"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Brand</span>
+                            <span class="info-value" id="outBrand"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Weight</span>
+                            <span class="info-value" id="outWeight"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status</span>
+                            <span class="info-value" id="outStatus"></span>
+                        </div>
+                    </div>
+                    <div class="detail-qr">
+                        <canvas id="outQrCanvas"></canvas>
                     </div>
                     <button type="button" id="confirmOutBtn" class="btn btn-danger">Confirm Scan Out</button>
                 </div>
             </div>
         </div>
 
-        <!-- Inventory Screen -->
-        <div id="inventory" class="screen">
+        <!-- Inventory All Screen -->
+        <div id="inventory-all" class="screen">
             <div class="screen-content">
-                <h2>📦 Inventory</h2>
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="all">All Cylinders</button>
-                    <button class="tab-btn" data-tab="full">Full Only</button>
-                    <button class="tab-btn" data-tab="empty">Empty Only</button>
+                <div class="screen-header">
+                    <h2>📦 All Cylinders</h2>
+                    <p>All cylinders currently in stock</p>
                 </div>
-                <div id="inventoryContent"></div>
+                <div id="inventoryAll" class="inventory-container"></div>
+            </div>
+        </div>
+
+        <!-- Inventory Full Screen -->
+        <div id="inventory-full" class="screen">
+            <div class="screen-content">
+                <div class="screen-header">
+                    <h2>✅ Full Cylinders</h2>
+                    <p>Cylinders with full status only</p>
+                </div>
+                <div id="inventoryFull" class="inventory-container"></div>
+            </div>
+        </div>
+
+        <!-- Inventory Empty Screen -->
+        <div id="inventory-empty" class="screen">
+            <div class="screen-content">
+                <div class="screen-header">
+                    <h2>⚪ Empty Cylinders</h2>
+                    <p>Cylinders with empty status only</p>
+                </div>
+                <div id="inventoryEmpty" class="inventory-container"></div>
             </div>
         </div>
     </div>
 
-    <!-- QR Code Library FIRST -->
+    <!-- QR Code Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <!-- Single unified app.js -->
+    <!-- App Script -->
     <script src="js/app.js"></script>
 </body>
 </html>
