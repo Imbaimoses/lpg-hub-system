@@ -1,164 +1,36 @@
-name=index.html
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LPG Cylinder Inventory</title>
-    <link rel="stylesheet" href="css/styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LPG Cylinder Inventory</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- QR generator (Qrious) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <!-- QR scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
-    <div class="app">
-        <header>
-            <h1>🔥 LPG Cylinder Inventory</h1>
-            <p>Depot Inventory Management System</p>
-        </header>
+  <main class="container">
+    <header>
+      <h1>LPG Cylinder Inventory System</h1>
+    </header>
 
-        <!-- NAVIGATION - 3 BUTTONS ONLY -->
-        <nav>
-            <button id="btnScanIn" class="nav-button active">📥 Scan IN</button>
-            <button id="btnScanOut" class="nav-button">📤 Scan OUT</button>
-            <button id="btnInventory" class="nav-button">📦 Inventory</button>
-        </nav>
+    <nav class="main-nav">
+      <button id="btn-scan-in" class="nav-btn">Scan IN</button>
+      <button id="btn-scan-out" class="nav-btn">Scan OUT</button>
+      <button id="btn-inventory" class="nav-btn">Inventory</button>
+    </nav>
 
-        <!-- SCAN IN SCREEN -->
-        <div id="screenScanIn" class="screen active">
-            <div class="content">
-                <h2>📥 Scan In Cylinder</h2>
-                <p>Register a new cylinder</p>
+    <section id="content">
+      <!-- dynamic content renders here -->
+    </section>
 
-                <form id="formScanIn">
-                    <div class="form-field">
-                        <label>GLP Code *</label>
-                        <input type="text" id="glpCode" placeholder="e.g., GLPKEH06779F" required>
-                    </div>
+    <footer class="footer">
+      <small>Simple inventory — localStorage. Future: backend + DB + hosted scanner.</small>
+    </footer>
+  </main>
 
-                    <div class="form-row">
-                        <div class="form-field">
-                            <label>Brand *</label>
-                            <select id="brand" required>
-                                <option value="">Select Brand</option>
-                                <option value="PayGo">PayGo</option>
-                                <option value="Wajiko">Wajiko</option>
-                                <option value="Greenwells">Greenwells</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label>Status *</label>
-                            <select id="status" required>
-                                <option value="">Select Status</option>
-                                <option value="Full">Full</option>
-                                <option value="Empty">Empty</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-field">
-                        <label>Weight (kg) *</label>
-                        <input type="number" id="weight" placeholder="24.5" step="0.1" required>
-                        <small>Full: 24.0-25.0 kg | Empty: 11.0-25.0 kg</small>
-                    </div>
-
-                    <button type="submit" class="btn-submit">Register Cylinder</button>
-                </form>
-
-                <div id="msgScanIn" class="message"></div>
-
-                <div id="qrScanIn" class="qr-box" style="display:none;">
-                    <h3>✓ QR Code Generated</h3>
-                    <canvas id="qrCanvasScanIn"></canvas>
-                    <p id="qrTextScanIn"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- SCAN OUT SCREEN -->
-        <div id="screenScanOut" class="screen">
-            <div class="content">
-                <h2>📤 Scan Out Cylinder</h2>
-                <p>Remove a cylinder from inventory</p>
-
-                <form id="formScanOut">
-                    <div class="form-field">
-                        <label>GLP Code *</label>
-                        <input type="text" id="glpCodeOut" placeholder="e.g., GLPKEH06779F" required>
-                    </div>
-                    <button type="submit" class="btn-submit">Search Cylinder</button>
-                </form>
-
-                <div id="msgScanOut" class="message"></div>
-
-                <div id="cylinderInfo" class="cylinder-info" style="display:none;">
-                    <div class="info-header">
-                        <h3>Cylinder Details</h3>
-                        <span id="statusBadge" class="badge"></span>
-                    </div>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <span class="label">GLP Code</span>
-                            <span class="value" id="infGlp"></span>
-                        </div>
-                        <div class="info-item">
-                            <span class="label">Brand</span>
-                            <span class="value" id="infBrand"></span>
-                        </div>
-                        <div class="info-item">
-                            <span class="label">Weight</span>
-                            <span class="value" id="infWeight"></span>
-                        </div>
-                        <div class="info-item">
-                            <span class="label">Status</span>
-                            <span class="value" id="infStatus"></span>
-                        </div>
-                    </div>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <canvas id="qrCanvasScanOut"></canvas>
-                    </div>
-                    <button id="btnConfirmOut" type="button" class="btn-danger">Confirm Scan Out</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- INVENTORY SCREEN -->
-        <div id="screenInventory" class="screen">
-            <div class="content">
-                <h2>📦 Inventory</h2>
-                <p>View cylinders by category</p>
-
-                <!-- STATS -->
-                <div class="stats">
-                    <div class="stat">
-                        <div class="number" id="statTotal">0</div>
-                        <div class="text">Total In Stock</div>
-                    </div>
-                    <div class="stat">
-                        <div class="number" id="statFull">0</div>
-                        <div class="text">Full</div>
-                    </div>
-                    <div class="stat">
-                        <div class="number" id="statEmpty">0</div>
-                        <div class="text">Empty</div>
-                    </div>
-                    <div class="stat">
-                        <div class="number" id="statOut">0</div>
-                        <div class="text">Scanned Out</div>
-                    </div>
-                </div>
-
-                <!-- TABS -->
-                <div class="tabs">
-                    <button id="tabAll" class="tab-btn active">📋 All Cylinders</button>
-                    <button id="tabFull" class="tab-btn">✅ Full Cylinders</button>
-                    <button id="tabEmpty" class="tab-btn">⚪ Empty Cylinders</button>
-                </div>
-
-                <!-- CYLINDERS -->
-                <div id="cylindersList" class="cylinders-grid"></div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="js/app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
