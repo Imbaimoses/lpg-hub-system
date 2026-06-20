@@ -1,553 +1,266 @@
-/* css/styles.css */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-}
-
-.header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
-    text-align: center;
-}
-
-.header h1 {
-    font-size: 2.5em;
-    margin-bottom: 10px;
-}
-
-.subtitle {
-    font-size: 1.1em;
-    opacity: 0.9;
-}
-
-.navbar {
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid #f0f0f0;
-    background: #fafafa;
-}
-
-.nav-btn {
-    flex: 1;
-    padding: 15px 20px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 500;
-    color: #666;
-    transition: all 0.3s ease;
-    border-bottom: 3px solid transparent;
-}
-
-.nav-btn:hover {
-    background: #f0f0f0;
-}
-
-.nav-btn.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
-    background: #f5f5ff;
-}
-
-.nav-icon {
-    margin-right: 8px;
-}
-
-.section {
-    display: none;
-    padding: 40px 30px;
-    animation: fadeIn 0.3s ease;
-}
-
-.section.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 25px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    color: white;
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-}
-
-.stat-icon {
-    font-size: 3em;
-}
-
-.stat-content {
-    flex: 1;
-}
-
-.stat-label {
-    font-size: 0.9em;
-    opacity: 0.9;
-    margin-bottom: 5px;
-}
-
-.stat-value {
-    font-size: 2.5em;
-    font-weight: bold;
-}
-
-.form-container {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.form-container h2 {
-    color: #333;
-    margin-bottom: 30px;
-    font-size: 1.8em;
-}
-
-.form {
-    background: #f9f9f9;
-    padding: 25px;
-    border-radius: 10px;
-    border: 1px solid #e0e0e0;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: #333;
-    font-weight: 500;
-    font-size: 0.95em;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 1em;
-    transition: border-color 0.3s ease;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.btn {
-    padding: 14px 28px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    color: white;
-}
-
-.btn-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
-}
-
-.btn-secondary {
-    background: #e0e0e0;
-    color: #333;
-}
-
-.btn-secondary:hover {
-    background: #d0d0d0;
-}
-
-.message {
-    margin-top: 20px;
-    padding: 15px 20px;
-    border-radius: 8px;
-    display: none;
-}
-
-.message.success {
-    display: block;
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.message.error {
-    display: block;
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.qr-container {
-    margin-top: 30px;
-    padding: 25px;
-    background: #f9f9f9;
-    border-radius: 10px;
-    text-align: center;
-    border: 1px solid #e0e0e0;
-}
-
-.qr-container h3 {
-    color: #333;
-    margin-bottom: 20px;
-}
-
-#qrCanvas {
-    max-width: 250px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-    margin: 0 auto;
-    display: block;
-}
-
-.qr-info {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.qr-info p {
-    color: #666;
-    margin: 8px 0;
-}
-
-.cylinder-details {
-    margin-top: 30px;
-}
-
-.detail-card {
-    background: #f9f9f9;
-    padding: 25px;
-    border-radius: 10px;
-    border: 1px solid #e0e0e0;
-}
-
-.detail-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 15px 0;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.detail-row:last-child {
-    border-bottom: none;
-}
-
-.detail-label {
-    font-weight: 600;
-    color: #333;
-}
-
-.detail-value {
-    color: #666;
-}
-
-.detail-qr {
-    text-align: center;
-    margin: 25px 0;
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-}
-
-#detailQrCanvas {
-    max-width: 200px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
-}
-
-.inventory-container {
-    max-width: 1000px;
-    margin: 0 auto;
-}
-
-.inventory-container h2 {
-    color: #333;
-    margin-bottom: 25px;
-    font-size: 1.8em;
-}
-
-.tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 25px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.tab-btn {
-    padding: 12px 20px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 500;
-    color: #666;
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s ease;
-}
-
-.tab-btn:hover {
-    color: #667eea;
-}
-
-.tab-btn.active {
-    color: #667eea;
-    border-bottom-color: #667eea;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-.cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-.cylinder-card {
-    background: #f9f9f9;
-    border: 2px solid #e0e0e0;
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.cylinder-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-    border-color: #667eea;
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    margin-bottom: 15px;
-}
-
-.glp-code {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #333;
-    font-family: 'Courier New', monospace;
-}
-
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85em;
-    font-weight: 600;
-}
-
-.status-full {
-    background: #d4edda;
-    color: #155724;
-}
-
-.status-empty {
-    background: #e2e3e5;
-    color: #383d41;
-}
-
-.card-info {
-    margin-bottom: 15px;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    color: #666;
-    font-size: 0.95em;
-}
-
-.info-label {
-    font-weight: 500;
-    color: #333;
-}
-
-.card-qr {
-    text-align: center;
-    padding: 15px 0;
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-    margin: 15px 0;
-}
-
-.card-qr canvas {
-    max-width: 150px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 8px;
-}
-
-.card-button {
-    width: 100%;
-    padding: 10px;
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 0.95em;
-}
-
-.card-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(245, 87, 108, 0.3);
-}
-
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #999;
-}
-
-.empty-state-icon {
-    font-size: 3em;
-    margin-bottom: 15px;
-}
-
-.empty-state p {
-    font-size: 1.1em;
-    margin-bottom: 10px;
-}
-
-@media (max-width: 768px) {
-    .header h1 {
-        font-size: 1.8em;
+// js/app.js
+class LPGApp {
+    constructor() {
+        this.currentCylinder = null;
+        this.init();
     }
 
-    .navbar {
-        flex-wrap: wrap;
+    init() {
+        this.setupEventListeners();
+        this.updateDashboard();
+        this.renderInventory();
     }
 
-    .nav-btn {
-        flex: 1 1 50%;
-        padding: 12px 10px;
-        font-size: 0.9em;
+    setupEventListeners() {
+        // Navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchSection(e.target.closest('.nav-btn').dataset.section));
+        });
+
+        // Scan IN Form
+        document.getElementById('scanInForm').addEventListener('submit', (e) => this.handleScanIn(e));
+
+        // Scan OUT Form
+        document.getElementById('scanOutForm').addEventListener('submit', (e) => this.handleScanOut(e));
+
+        // Confirm Scan Out
+        document.getElementById('confirmScanOut').addEventListener('click', () => this.confirmScanOut());
+
+        // Inventory Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchInventoryTab(e.target.dataset.tab));
+        });
     }
 
-    .dashboard-grid {
-        grid-template-columns: 1fr;
+    switchSection(sectionId) {
+        document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+        document.getElementById(sectionId).classList.add('active');
+
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-section="${sectionId}"]`).classList.add('active');
+
+        if (sectionId === 'inventory') {
+            this.renderInventory();
+        }
     }
 
-    .stat-card {
-        flex-direction: column;
-        text-align: center;
+    switchInventoryTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(tab).classList.add('active');
+
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+        this.renderInventory();
     }
 
-    .section {
-        padding: 20px 15px;
+    handleScanIn(e) {
+        e.preventDefault();
+
+        const glpCode = document.getElementById('glpCode').value.trim().toUpperCase();
+        const brand = document.getElementById('brand').value;
+        const status = document.getElementById('status').value;
+        const weight = document.getElementById('weight').value;
+
+        const messageDiv = document.getElementById('scanInMessage');
+        messageDiv.className = 'message';
+
+        try {
+            if (!glpCode || !brand || !status || !weight) {
+                throw new Error('All fields are required');
+            }
+
+            Inventory.validateWeight(weight, status);
+
+            const cylinder = {
+                glp: glpCode,
+                brand,
+                status,
+                weight: parseFloat(weight),
+                state: 'IN'
+            };
+
+            Inventory.add(cylinder);
+
+            messageDiv.className = 'message success';
+            messageDiv.textContent = `✓ Cylinder ${glpCode} registered successfully!`;
+
+            this.generateQRForScanIn(glpCode);
+
+            document.getElementById('scanInForm').reset();
+            this.updateDashboard();
+
+            setTimeout(() => {
+                messageDiv.className = 'message';
+            }, 5000);
+
+        } catch (error) {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = `✗ Error: ${error.message}`;
+        }
     }
 
-    .cards-grid {
-        grid-template-columns: 1fr;
+    generateQRForScanIn(glpCode) {
+        const qrContainer = document.getElementById('qrContainer');
+        const qrGlp = document.getElementById('qrGlp');
+        
+        qrGlp.textContent = glpCode;
+        
+        setTimeout(() => {
+            QRGenerator.generateQR(glpCode, 'qrCanvas');
+            qrContainer.style.display = 'block';
+        }, 100);
     }
 
-    .tabs {
-        flex-wrap: wrap;
+    handleScanOut(e) {
+        e.preventDefault();
+
+        const glpCodeOut = document.getElementById('glpCodeOut').value.trim().toUpperCase();
+        const messageDiv = document.getElementById('scanOutMessage');
+        const cylinderDetails = document.getElementById('cylinderDetails');
+
+        messageDiv.className = 'message';
+        cylinderDetails.style.display = 'none';
+
+        try {
+            if (!glpCodeOut) {
+                throw new Error('Please enter a GLP Code');
+            }
+
+            const cylinder = Inventory.findByGlp(glpCodeOut);
+
+            if (!cylinder) {
+                throw new Error(`Cylinder ${glpCodeOut} not found in inventory`);
+            }
+
+            this.currentCylinder = cylinder;
+
+            document.getElementById('detailGlp').textContent = cylinder.glp;
+            document.getElementById('detailBrand').textContent = cylinder.brand;
+            document.getElementById('detailWeight').textContent = `${cylinder.weight} kg`;
+            
+            const statusElement = document.getElementById('detailStatus');
+            statusElement.textContent = cylinder.status;
+            statusElement.className = `detail-value status-${cylinder.status.toLowerCase()}`;
+
+            setTimeout(() => {
+                QRGenerator.generateQR(cylinder.glp, 'detailQrCanvas');
+                cylinderDetails.style.display = 'block';
+            }, 100);
+
+            messageDiv.className = 'message success';
+            messageDiv.textContent = `✓ Cylinder found!`;
+
+            document.getElementById('scanOutForm').reset();
+
+        } catch (error) {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = `✗ Error: ${error.message}`;
+        }
     }
 
-    .tab-btn {
-        flex: 1 1 calc(33.333% - 10px);
-        padding: 10px;
-        font-size: 0.9em;
+    confirmScanOut() {
+        if (!this.currentCylinder) return;
+
+        try {
+            Inventory.markAsOut(this.currentCylinder.id);
+
+            const messageDiv = document.getElementById('scanOutMessage');
+            messageDiv.className = 'message success';
+            messageDiv.textContent = `✓ Cylinder ${this.currentCylinder.glp} scanned out successfully!`;
+
+            document.getElementById('cylinderDetails').style.display = 'none';
+            this.currentCylinder = null;
+
+            this.updateDashboard();
+
+            setTimeout(() => {
+                messageDiv.className = 'message';
+            }, 5000);
+
+        } catch (error) {
+            const messageDiv = document.getElementById('scanOutMessage');
+            messageDiv.className = 'message error';
+            messageDiv.textContent = `✗ Error: ${error.message}`;
+        }
+    }
+
+    renderInventory() {
+        const allCylinders = Inventory.getInStock();
+        const fullCylinders = Inventory.getFullCylinders();
+        const emptyCylinders = Inventory.getEmptyCylinders();
+
+        this.renderTab('all', allCylinders);
+        this.renderTab('full', fullCylinders);
+        this.renderTab('empty', emptyCylinders);
+    }
+
+    renderTab(tabId, cylinders) {
+        const tabContent = document.getElementById(tabId);
+        
+        if (cylinders.length === 0) {
+            tabContent.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p>No cylinders in this category</p>
+                </div>
+            `;
+            return;
+        }
+
+        const cardsHtml = cylinders.map(cylinder => `
+            <div class="cylinder-card">
+                <div class="card-header">
+                    <div class="glp-code">${cylinder.glp}</div>
+                    <span class="status-badge status-${cylinder.status.toLowerCase()}">${cylinder.status}</span>
+                </div>
+                <div class="card-info">
+                    <div class="info-row">
+                        <span class="info-label">Brand:</span>
+                        <span>${cylinder.brand}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Weight:</span>
+                        <span>${cylinder.weight} kg</span>
+                    </div>
+                </div>
+                <div class="card-qr" id="qr-${cylinder.id}"></div>
+                <button class="card-button" data-id="${cylinder.id}">Scan Out</button>
+            </div>
+        `).join('');
+
+        tabContent.innerHTML = `<div class="cards-grid">${cardsHtml}</div>`;
+
+        cylinders.forEach(cylinder => {
+            const qrContainer = document.getElementById(`qr-${cylinder.id}`);
+            if (qrContainer) {
+                const qrCanvas = QRGenerator.generateQRInCard(cylinder.glp);
+                qrContainer.appendChild(qrCanvas);
+            }
+        });
+
+        document.querySelectorAll('.card-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cylinderId = btn.dataset.id;
+                const cylinder = cylinders.find(c => c.id === cylinderId);
+                if (cylinder) {
+                    document.getElementById('glpCodeOut').value = cylinder.glp;
+                    this.switchSection('scan-out');
+                    const form = document.getElementById('scanOutForm');
+                    form.dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+    }
+
+    updateDashboard() {
+        document.getElementById('totalInStock').textContent = Inventory.getInStock().length;
+        document.getElementById('fullCylinders').textContent = Inventory.getFullCylinders().length;
+        document.getElementById('emptyCylinders').textContent = Inventory.getEmptyCylinders().length;
+        document.getElementById('scannedOut').textContent = Inventory.getScannedOut().length;
     }
 }
 
-@media (max-width: 480px) {
-    .header h1 {
-        font-size: 1.5em;
-    }
-
-    .nav-btn {
-        flex: 1 1 50%;
-        padding: 10px 8px;
-        font-size: 0.85em;
-    }
-
-    .nav-icon {
-        display: none;
-    }
-
-    .stat-value {
-        font-size: 2em;
-    }
-
-    .form {
-        padding: 15px;
-    }
-
-    .tab-btn {
-        flex: 1 1 33.333%;
-        padding: 8px;
-        font-size: 0.8em;
-    }
-}
+document.addEventListener('DOMContentLoaded', () => {
+    new LPGApp();
+});
