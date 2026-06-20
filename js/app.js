@@ -1,3 +1,4 @@
+name=js/app.js
 // ============================================
 // UNIFIED LPG CYLINDER INVENTORY APP
 // Single localStorage-based system
@@ -79,9 +80,11 @@ class CylinderDB {
     markAsOut(id) {
         const cylinder = this.cylinders.find(c => c.id === id);
         if (cylinder) {
-            cylinder.state = 'OUT';\n            cylinder.outAt = new Date().toISOString();
+            cylinder.state = 'OUT';
+            cylinder.outAt = new Date().toISOString();
             this.save();
-        }\n        return cylinder;
+        }
+        return cylinder;
     }
 
     getInStock() {
@@ -134,11 +137,14 @@ function switchScreen(screenId) {
     // Screen-specific actions
     if (screenId === 'dashboard') {
         updateDashboard();
-    } else if (screenId === 'inventory') {\n        renderInventory('all');\n    }
+    } else if (screenId === 'inventory') {
+        renderInventory('all');
+    }
 }
 
 // ============================================
-// DASHBOARD\n// ============================================
+// DASHBOARD
+// ============================================
 function updateDashboard() {
     document.getElementById('dashTotal').textContent = db.getInStock().length;
     document.getElementById('dashFull').textContent = db.getFullCylinders().length;
@@ -239,7 +245,7 @@ document.getElementById('scanOutForm').addEventListener('submit', function(e) {
 
         detailsDiv.style.display = 'block';
         msgDiv.className = 'message success';
-        msgDiv.textContent = '✓ Cylinder found. Click \"Confirm Scan Out\" to complete.';
+        msgDiv.textContent = '✓ Cylinder found. Click "Confirm Scan Out" to complete.';
 
     } catch (error) {
         msgDiv.className = 'message error';
@@ -289,7 +295,8 @@ function renderInventory(tabType) {
         cylinders = db.getEmptyCylinders();
     }
 
-    // Update active tab button\n    document.querySelectorAll('.inventory-tab-btn').forEach(btn => {
+    // Update active tab button
+    document.querySelectorAll('.inventory-tab-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.invTab === tabType) {
             btn.classList.add('active');
@@ -299,32 +306,32 @@ function renderInventory(tabType) {
     const container = document.getElementById('inventoryContent');
 
     if (cylinders.length === 0) {
-        container.innerHTML = `<div class=\"empty-state\"><div class=\"empty-state-icon\">📭</div><p>No cylinders in this category</p></div>`;
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><p>No cylinders in this category</p></div>`;
         return;
     }
 
     const html = cylinders.map(c => `
-        <div class=\"cylinder-card\">
-            <div class=\"card-header\">
-                <div class=\"glp-code\">${c.glp}</div>
-                <span class=\"status-badge status-${c.status.toLowerCase()}\">${c.status}</span>
+        <div class="cylinder-card">
+            <div class="card-header">
+                <div class="glp-code">${c.glp}</div>
+                <span class="status-badge status-${c.status.toLowerCase()}">${c.status}</span>
             </div>
-            <div class=\"card-info\">
-                <div class=\"info-row\">
-                    <span class=\"info-label\">Brand:</span>
+            <div class="card-info">
+                <div class="info-row">
+                    <span class="info-label">Brand:</span>
                     <span>${c.brand}</span>
                 </div>
-                <div class=\"info-row\">
-                    <span class=\"info-label\">Weight:</span>
+                <div class="info-row">
+                    <span class="info-label">Weight:</span>
                     <span>${c.weight} kg</span>
                 </div>
-                <div class=\"info-row\">
-                    <span class=\"info-label\">Created:</span>
+                <div class="info-row">
+                    <span class="info-label">Created:</span>
                     <span>${new Date(c.createdAt).toLocaleDateString()}</span>
                 </div>
             </div>
-            <div class=\"card-qr\" id=\"qr-${c.id}\"></div>
-            <button class=\"card-button\" onclick=\"quickScanOut('${c.id}')\">Scan Out</button>
+            <div class="card-qr" id="qr-${c.id}"></div>
+            <button class="card-button" onclick="quickScanOut('${c.id}')">Scan Out</button>
         </div>
     `).join('');
 
