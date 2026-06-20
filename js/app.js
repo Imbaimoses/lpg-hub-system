@@ -1,431 +1,446 @@
-// LPG Cylinder Inventory App (localStorage)
-// Key features implemented: Scan IN, Scan OUT, Inventory (3 tabs), QR generation, QR scanning, validations.
+// Modern UI LPG Cylinder Inventory (localStorage)
+// Preserves rules: brands, weight ranges, QR generation (content = GLP), scan out, inventory tabs.
+// Improved UI navigation and camera handling.
 
-const STORAGE_KEY = 'cylinders';
+const STORAGE_KEY = 'cylinders_v2';
+const BRANDS = ['PayGo','Wajiko','GreenWells'];
+const STATUSES = ['Full','Empty'];
 
-// Allowed brands and statuses
-const BRANDS = ['PayGo', 'Wajiko', 'GreenWells'];
-const STATUSES = ['Full', 'Empty'];
+// Simple client-side "router" for screens
+const view = document.getElementById('view');
+const navIn = document.getElementById('nav-in');
+const navOut = document.getElementById('nav-out');
+const navInv = document.getElementById('nav-inv');
 
-// DOM refs
-const content = document.getElementById('content');
-document.getElementById('btn-scan-in').addEventListener('click', showScanIn);
-document.getElementById('btn-scan-out').addEventListener('click', showScanOut);
-document.getElementById('btn-inventory').addEventListener('click', showInventory);
+navIn.addEventListener('click', () => navigate('in'));
+navOut.addEventListener('click', () => navigate('out'));
+navInv.addEventListener('click', () => navigate('inv'));
 
-// App init
-renderHome();
+// initial
+navigate('inv');
 
-function loadCylinders(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){ return []; }
-}
-function saveCylinders(arr){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-}
+// storage helpers
+function loadCylinders(){ try{ const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : []; } catch(e){ return []; } }
+function saveCylinders(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
 
-// Home (default) - show brief actions (redirect to Inventory by default)
-function renderHome(){
-  showInventory();
-}
-
-// --- SCAN IN ---
-function showScanIn(){
-  content.innerHTML = '';
-  const panel = createPanel();
-
-  const form = document.createElement('div');
-  form.className = 'panel';
-  form.innerHTML = `
-    <h3>Scan IN — Register Cylinder</h3>
-    <div class="form-row">
-      <label>GLP Code</label>
-      <input id="in-glp" type="text" placeholder="GLPKEH06779F" />
-    </div>
-    <div class="form-row">
-      <label>Brand</label>
-      <select id="in-brand"></select>
-    </div>
-    <div class="form-row">
-      <label>Status</label>
-      <select id="in-status"></select>
-    </div>
-    <div class="form-row">
-      <label>Weight (kg)</label>
-      <input id="in-weight" type="number" step="0.1" />
-    </div>
-    <div class="small" id="in-help">All fields required. Duplicate active GLP codes are not allowed.</div>
-    <div class="actions">
-      <button id="register-btn" class="btn btn-primary">REGISTER CYLINDER</button>
-      <button id="in-cancel" class="btn btn-secondary">CANCEL</button>
-    </div>
-  `;
-  panel.appendChild(form);
-  content.appendChild(panel);
-
-  // populate selects
-  const brandSelect = document.getElementById('in-brand');
-  BRANDS.forEach(b => {
-    const op = document.createElement('option'); op.value = b; op.textContent = b; brandSelect.appendChild(op);
-  });
-  const statusSelect = document.getElementById('in-status');
-  STATUSES.forEach(s => {
-    const op = document.createElement('option'); op.value = s; op.textContent = s; statusSelect.appendChild(op);
-  });
-
-  document.getElementById('in-cancel').addEventListener('click', showInventory);
-  document.getElementById('register-btn').addEventListener('click', () => {
-    const glp = (document.getElementById('in-glp').value || '').trim();
-    const brand = brandSelect.value;
-    const status = statusSelect.value;
-    const weightRaw = document.getElementById('in-weight').value;
-    const weight = weightRaw === '' ? null : Number(weightRaw);
-
-    const err = validateScanIn(glp, brand, status, weight);
-    if(err){
-      alert(err);
-      return;
-    }
-    // Save
-    const cylinders = loadCylinders();
-    const existsActive = cylinders.some(c => c.glp.toUpperCase() === glp.toUpperCase() && c.state === 'IN');
-    if(existsActive){
-      alert('A cylinder with this GLP is already active (state = IN). Duplicate active cylinders are not allowed.');
-      return;
-    }
-    const cyl = {
-      glp: glp.toUpperCase(),
-      brand,
-      weight,
-      status,
-      state: 'IN',
-      createdAt: new Date().toISOString()
-    };
-    cylinders.push(cyl);
-    saveCylinders(cylinders);
-    alert('Cylinder registered.');
-    showInventory();
-  });
+// navigation and active nav button
+function setActiveNav(key){
+  navIn.classList.toggle('active', key==='in');
+  navOut.classList.toggle('active', key==='out');
+  navInv.classList.toggle('active', key==='inv');
+  navIn.setAttribute('aria-pressed', key==='in');
+  navOut.setAttribute('aria-pressed', key==='out');
+  navInv.setAttribute('aria-pressed', key==='inv');
 }
 
-function validateScanIn(glp, brand, status, weight){
-  if(!glp) return 'GLP Code is required.';
-  // Basic GLP format - allow letters/digits and length between 6 and 20
-  if(!/^[A-Za-z0-9]+$/.test(glp)) return 'GLP Code must be letters and digits only (no spaces).';
-  if(!(BRANDS.includes(brand))) return 'Brand is invalid.';
-  if(!(STATUSES.includes(status))) return 'Status is invalid.';
-  if(weight === null || Number.isNaN(weight)) return 'Weight is required.';
-  // Round to one decimal place check allowed values using inclusive ranges
-  const w = Number(weight);
-  if(status === 'Full'){
-    if(!(w >= 24.0 && w <= 25.0)) return 'For Full status weight must be between 24.0 kg and 25.0 kg (inclusive).';
-  } else { // Empty
-    if(!(w >= 11.0 && w <= 25.0)) return 'For Empty status weight must be between 11.0 kg and 25.0 kg (inclusive).';
-  }
-  return null;
+function navigate(screen){
+  setActiveNav(screen);
+  if(screen === 'in') renderScanIn();
+  if(screen === 'out') renderScanOut();
+  if(screen === 'inv') renderInventory();
 }
 
-// --- INVENTORY ---
-function showInventory(){
-  content.innerHTML = '';
-  const panel = createPanel();
-  panel.innerHTML = `
-    <div class="inventory-top">
-      <div>
-        <h3>Inventory</h3>
-        <div class="small">Only cylinders with state = IN appear here.</div>
-      </div>
-      <div class="counters" id="counters"></div>
-    </div>
+/* ---------------- SCAN IN ---------------- */
+function renderScanIn(){
+  view.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'view-screen panel-lg active';
+  container.innerHTML = `
+    <h2>Scan IN — Register Cylinder</h2>
+    <p class="small">Register a cylinder into stock. Duplicate active GLP codes are prevented.</p>
 
-    <div class="tabs" id="tabs"></div>
-    <div class="cards" id="cards"></div>
-  `;
-  content.appendChild(panel);
-
-  // tabs
-  const tabs = document.getElementById('tabs');
-  const tabNames = [
-    {id:'all', label:'All Cylinders'},
-    {id:'full', label:'Full Cylinders'},
-    {id:'empty', label:'Empty Cylinders'}
-  ];
-  tabNames.forEach((t, idx) => {
-    const el = document.createElement('div');
-    el.className = 'tab' + (idx===0 ? ' active' : '');
-    el.dataset.tab = t.id;
-    el.textContent = t.label;
-    el.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-      el.classList.add('active');
-      renderInventoryCards(t.id);
-    });
-    tabs.appendChild(el);
-  });
-
-  renderCounters();
-  renderInventoryCards('all');
-}
-
-function renderCounters(){
-  const counts = {
-    totalIn: 0,
-    full: 0,
-    empty: 0,
-    scannedOut: 0
-  };
-  const cylinders = loadCylinders();
-  cylinders.forEach(c => {
-    if(c.state === 'IN'){
-      counts.totalIn++;
-      if(c.status === 'Full') counts.full++;
-      if(c.status === 'Empty') counts.empty++;
-    } else {
-      counts.scannedOut++;
-    }
-  });
-  const container = document.getElementById('counters');
-  container.innerHTML = '';
-  container.appendChild(counterEl('Total In Stock', counts.totalIn));
-  container.appendChild(counterEl('Full Cylinders', counts.full));
-  container.appendChild(counterEl('Empty Cylinders', counts.empty));
-  container.appendChild(counterEl('Scanned Out', counts.scannedOut));
-}
-
-function counterEl(label, num){
-  const d = document.createElement('div');
-  d.className = 'counter';
-  d.innerHTML = `<div style="font-weight:700;font-size:18px">${num}</div><div class="small">${label}</div>`;
-  return d;
-}
-
-function renderInventoryCards(tab){
-  const cards = document.getElementById('cards');
-  cards.innerHTML = '';
-  const cylinders = loadCylinders();
-  const filtered = cylinders.filter(c => c.state === 'IN').filter(c => {
-    if(tab === 'all') return true;
-    if(tab === 'full') return c.status === 'Full';
-    if(tab === 'empty') return c.status === 'Empty';
-    return true;
-  });
-  if(filtered.length === 0){
-    cards.innerHTML = `<div class="small">No cylinders to show in this tab.</div>`;
-    return;
-  }
-  filtered.forEach(c => {
-    cards.appendChild(createCard(c));
-  });
-}
-
-function createCard(cyl){
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `
-    <div class="glp">${cyl.glp}</div>
-    <div class="meta">${cyl.brand} — ${cyl.weight.toFixed(1)} kg — ${cyl.status}</div>
-    <div class="center">
-      <div class="qr-img" id="qr-${escapeId(cyl.glp)}"></div>
-    </div>
-    <div class="card-footer">
-      <div class="small">Registered: ${new Date(cyl.createdAt).toLocaleString()}</div>
-      <div>
-        <button class="btn btn-danger btn-scan-out" data-glp="${cyl.glp}">SCAN OUT</button>
-      </div>
-    </div>
-  `;
-  // generate QR
-  generateQRCodeInto(cyl.glp, document.getElementById(`qr-${escapeId(cyl.glp)}`));
-  // attach scan out handler
-  card.querySelector('.btn-scan-out').addEventListener('click', () => openConfirmScanOut(cyl.glp));
-  return card;
-}
-
-function escapeId(s){ return s.replace(/[^a-z0-9_\-]/ig, '_'); }
-
-function generateQRCodeInto(text, container){
-  container.innerHTML = '';
-  // using Qrious to produce canvas image
-  const canvas = document.createElement('canvas');
-  canvas.width = 240; canvas.height = 240; // larger for better scanning
-  const qr = new QRious({
-    element: canvas,
-    value: text,
-    size: 240,
-    level: 'H'
-  });
-  // scale down for display but keep image resolution
-  const img = document.createElement('img');
-  img.src = canvas.toDataURL('image/png');
-  img.style.width = '120px';
-  img.style.height = '120px';
-  container.appendChild(img);
-}
-
-// --- SCAN OUT ---
-function showScanOut(){
-  content.innerHTML = '';
-  const panel = createPanel();
-  panel.innerHTML = `
-    <h3>Scan OUT — Remove Cylinder</h3>
-    <div class="panel">
+    <div class="panel" id="form-panel">
       <div class="form-row">
-        <label>Scan QR</label>
-        <div>
-          <div id="qr-reader" style="width:320px"></div>
-          <div class="small">Or: enter GLP code manually below.</div>
+        <label for="glp">GLP Code</label>
+        <input id="glp" type="text" placeholder="GLPKEH06779F" />
+        <div id="glp-err" class="small" style="color:#b91c1c;display:none"></div>
+      </div>
+
+      <div class="form-row inline" style="gap:10px">
+        <div style="flex:1">
+          <label for="brand">Brand</label>
+          <select id="brand"></select>
+        </div>
+        <div style="width:160px">
+          <label for="status">Status</label>
+          <select id="status"></select>
         </div>
       </div>
 
       <div class="form-row">
-        <label>GLP Code</label>
-        <input id="out-glp" type="text" placeholder="GLPKEH06779F" />
-      </div>
-      <div class="actions">
-        <button id="out-search" class="btn btn-primary">SEARCH</button>
-        <button id="out-cancel" class="btn btn-secondary">CANCEL</button>
+        <label for="weight">Weight (kg)</label>
+        <input id="weight" type="number" step="0.1" />
+        <div id="weight-err" class="small" style="color:#b91c1c;display:none"></div>
       </div>
 
-      <div id="out-result" class="scan-preview"></div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button id="register" class="btn btn-primary">REGISTER CYLINDER</button>
+        <button id="cancel" class="btn btn-ghost">CANCEL</button>
+      </div>
+      <div class="small" style="margin-top:10px;color:var(--muted)">
+        Brands allowed: PayGo, Wajiko, GreenWells • Full weight: 24.0–25.0 kg • Empty weight: 11.0–25.0 kg
+      </div>
     </div>
   `;
-  content.appendChild(panel);
+  view.appendChild(container);
 
-  document.getElementById('out-cancel').addEventListener('click', showInventory);
+  // populate selects
+  const brandSel = container.querySelector('#brand');
+  BRANDS.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; brandSel.appendChild(o); });
+  const statusSel = container.querySelector('#status');
+  STATUSES.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; statusSel.appendChild(o); });
+
+  container.querySelector('#cancel').addEventListener('click', () => navigate('inv'));
+  container.querySelector('#register').addEventListener('click', () => {
+    const glpIn = container.querySelector('#glp').value.trim().toUpperCase();
+    const brand = brandSel.value;
+    const status = statusSel.value;
+    const weightVal = container.querySelector('#weight').value;
+    const weight = weightVal === '' ? null : Number(weightVal);
+
+    // clear previous errors
+    container.querySelector('#glp-err').style.display='none';
+    container.querySelector('#weight-err').style.display='none';
+
+    const err = validateScanIn(glpIn, brand, status, weight);
+    if(err){
+      if(err.field === 'glp'){ showErr('#glp-err', err.msg); return; }
+      if(err.field === 'weight'){ showErr('#weight-err', err.msg); return; }
+      alert(err.msg);
+      return;
+    }
+
+    // unique active GLP check
+    const arr = loadCylinders();
+    if(arr.some(c => c.glp === glpIn && c.state === 'IN')){
+      showErr('#glp-err', 'A cylinder with this GLP is already active (state = IN).');
+      return;
+    }
+
+    const newC = { glp: glpIn, brand, weight, status, state: 'IN', createdAt: new Date().toISOString() };
+    arr.push(newC);
+    saveCylinders(arr);
+    // nice success callout
+    flashMessage('Cylinder registered', {type:'success'});
+    navigate('inv');
+  });
+}
+
+function showErr(sel, msg){ const el = document.querySelector(sel); if(!el) return; el.textContent = msg; el.style.display = 'block'; }
+
+function validateScanIn(glp, brand, status, weight){
+  if(!glp) return {field:'glp', msg:'GLP Code is required.'};
+  if(!/^[A-Za-z0-9]+$/.test(glp)) return {field:'glp', msg:'GLP must be letters and digits only (no spaces).'};
+  if(!BRANDS.includes(brand)) return {msg:'Brand invalid.'};
+  if(!STATUSES.includes(status)) return {msg:'Status invalid.'};
+  if(weight === null || Number.isNaN(weight)) return {field:'weight', msg:'Weight is required.'};
+  const w = Number(weight);
+  if(status === 'Full'){
+    if(!(w >= 24.0 && w <= 25.0)) return {field:'weight', msg:'Full: weight must be between 24.0 and 25.0 kg.'};
+  } else {
+    if(!(w >= 11.0 && w <= 25.0)) return {field:'weight', msg:'Empty: weight must be between 11.0 and 25.0 kg.'};
+  }
+  return null;
+}
+
+/* ---------------- INVENTORY ---------------- */
+function renderInventory(){
+  view.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'view-screen active';
+  container.innerHTML = `
+    <div class="inventory-header">
+      <div>
+        <h2>Inventory</h2>
+        <div class="small">Only cylinders with state = IN are listed. Click QR to enlarge or Scan OUT to remove.</div>
+      </div>
+
+      <div class="controls">
+        <input id="search" class="search" placeholder="Search GLP or Brand..." />
+      </div>
+    </div>
+
+    <div class="counters" id="counters-root"></div>
+
+    <div class="tabs" id="tab-root">
+      <button class="tab active" data-tab="all">All</button>
+      <button class="tab" data-tab="full">Full</button>
+      <button class="tab" data-tab="empty">Empty</button>
+    </div>
+
+    <div class="cards" id="cards-root"></div>
+  `;
+  view.appendChild(container);
+
+  // events
+  container.querySelector('#search').addEventListener('input', () => refreshInventory());
+  container.querySelectorAll('.tab').forEach(t => t.addEventListener('click', (e) => {
+    container.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    refreshInventory();
+  }));
+
+  refreshInventory();
+}
+
+function refreshInventory(){
+  const arr = loadCylinders();
+  const active = arr.filter(c => c.state === 'IN');
+  const countersRoot = document.getElementById('counters-root');
+  countersRoot.innerHTML = '';
+  countersRoot.appendChild(counter('Total In Stock', active.length));
+  countersRoot.appendChild(counter('Full', active.filter(x=>x.status==='Full').length));
+  countersRoot.appendChild(counter('Empty', active.filter(x=>x.status==='Empty').length));
+  countersRoot.appendChild(counter('Scanned Out', arr.filter(x=>x.state==='OUT').length));
+
+  const tab = document.querySelector('.tab.active').dataset.tab;
+  const search = (document.getElementById('search').value || '').trim().toUpperCase();
+
+  let filtered = active.filter(c => {
+    if(tab === 'full') return c.status === 'Full';
+    if(tab === 'empty') return c.status === 'Empty';
+    return true;
+  });
+  if(search){
+    filtered = filtered.filter(c => c.glp.includes(search) || c.brand.toUpperCase().includes(search));
+  }
+
+  const cardsRoot = document.getElementById('cards-root');
+  cardsRoot.innerHTML = '';
+  if(filtered.length === 0){
+    cardsRoot.innerHTML = `<div class="small">No cylinders in this view.</div>`; return;
+  }
+  filtered.forEach(c => cardsRoot.appendChild(cardElement(c)));
+}
+
+function counter(label, num){
+  const el = document.createElement('div');
+  el.className = 'counter';
+  el.innerHTML = `<div class="num">${num}</div><div class="label">${label}</div>`;
+  return el;
+}
+
+function cardElement(cyl){
+  const el = document.createElement('div'); el.className = 'card';
+  el.innerHTML = `
+    <div class="top">
+      <div>
+        <div class="glp">${cyl.glp}</div>
+        <div class="meta">${cyl.brand} • ${cyl.weight.toFixed(1)} kg • ${cyl.status}</div>
+      </div>
+      <div class="small muted">${new Date(cyl.createdAt).toLocaleString()}</div>
+    </div>
+
+    <div class="qr-wrap">
+      <div class="qr-img" id="qr-${escapeId(cyl.glp)}" title="QR for ${cyl.glp}"></div>
+      <div style="flex:1">
+        <div style="margin-bottom:8px" class="small">Tap Scan OUT to remove from stock.</div>
+        <div class="actions">
+          <button class="btn btn-primary btn-scan-out" data-glp="${cyl.glp}">Scan OUT</button>
+          <button class="btn btn-ghost btn-enlarge" data-glp="${cyl.glp}">Enlarge QR</button>
+        </div>
+      </div>
+    </div>
+  `;
+  generateQRCodeInto(cyl.glp, el.querySelector(`#qr-${escapeId(cyl.glp)}`));
+  el.querySelector('.btn-scan-out').addEventListener('click', () => confirmScanOut(cyl.glp));
+  el.querySelector('.btn-enlarge').addEventListener('click', () => showQrModal(cyl.glp));
+  return el;
+}
+
+/* ---------------- SCAN OUT ---------------- */
+let html5QrScanner = null;
+function renderScanOut(){
+  view.innerHTML = '';
+  const container = document.createElement('div');
+  container.className = 'view-screen panel-lg active';
+  container.innerHTML = `
+    <h2>Scan OUT — Remove Cylinder</h2>
+    <p class="small">Use camera to scan a QR, or enter the GLP code manually.</p>
+
+    <div class="panel" style="display:flex;gap:12px;flex-direction:column">
+      <div id="qr-reader" style="min-height:160px;border-radius:10px;padding:8px;background:#0b1320;color:white;display:flex;align-items:center;justify-content:center">
+        <div class="qr-hint">Starting camera…</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="out-glp" type="text" placeholder="Enter GLP code" style="flex:1;padding:10px;border-radius:10px;border:1px solid #e6eefc" />
+        <button id="out-search" class="btn btn-primary">SEARCH</button>
+        <button id="out-cancel" class="btn btn-ghost">CANCEL</button>
+      </div>
+
+      <div id="out-result"></div>
+    </div>
+  `;
+  view.appendChild(container);
+
+  document.getElementById('out-cancel').addEventListener('click', () => { stopQrCamera(); navigate('inv'); });
   document.getElementById('out-search').addEventListener('click', () => {
     const glp = (document.getElementById('out-glp').value || '').trim().toUpperCase();
-    if(!glp){ alert('Enter GLP code or scan QR.'); return; }
+    if(!glp){ flashMessage('Enter GLP or scan QR', {type:'error'}); return; }
     findAndShowOut(glp);
   });
 
   // start camera scanner
-  startQrCameraScanner((decodedText) => {
-    // when a QR is detected
-    stopQrCameraScanner();
-    findAndShowOut(decodedText.trim().toUpperCase());
+  startQrCamera((decoded) => {
+    stopQrCamera();
+    findAndShowOut(decoded.trim().toUpperCase());
   });
 }
 
-// scanner controller
-let html5QrScanner = null;
+// camera helpers with improved error handling
+function startQrCamera(onDetected){
+  const reader = document.getElementById('qr-reader');
+  if(!reader) return;
+  reader.innerHTML = `<div class="qr-hint">Searching for camera…</div>`;
 
-function startQrCameraScanner(onDetected){
-  const qrReaderDiv = document.getElementById('qr-reader');
-  if(!qrReaderDiv) return;
-  qrReaderDiv.innerHTML = ''; // reset
-  const config = { fps: 10, qrbox: 250 };
-  html5QrScanner = new Html5Qrcode(/* element id */ "qr-reader");
   Html5Qrcode.getCameras().then(cameras => {
-    if(cameras && cameras.length){
-      const cameraId = cameras[0].id;
-      html5QrScanner.start(
-        cameraId,
-        config,
-        qrCodeMessage => {
-          onDetected(qrCodeMessage);
-        },
-        errorMessage => {
-          // no-op for now
-        }
-      ).catch(err => {
-        qrReaderDiv.innerHTML = `<div class="small">Camera start failed: ${err}. You can still enter GLP manually.</div>`;
-      });
-    } else {
-      qrReaderDiv.innerHTML = `<div class="small">No camera found. Enter GLP manually.</div>`;
+    if(!cameras || cameras.length === 0){
+      reader.innerHTML = `<div class="qr-hint">No camera found. Use manual GLP entry.</div>`; return;
     }
+    // pick back camera if available
+    const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
+    html5QrScanner = new Html5Qrcode("qr-reader");
+    html5QrScanner.start(cam.id, { fps: 10, qrbox: 250 },
+      qrMessage => { onDetected(qrMessage); },
+      error => { /* scanner ongoing */ }
+    ).catch(err => {
+      reader.innerHTML = `<div class="qr-hint">Camera start failed: ${String(err)} — use manual entry.</div>`;
+    });
   }).catch(err => {
-    qrReaderDiv.innerHTML = `<div class="small">Camera error: ${err}. Enter GLP manually.</div>`;
+    reader.innerHTML = `<div class="qr-hint">Camera error: ${String(err)} — use manual entry.</div>`;
   });
 }
 
-function stopQrCameraScanner(){
+function stopQrCamera(){
   if(html5QrScanner){
-    html5QrScanner.stop().then(() => {
-      html5QrScanner.clear();
-      html5QrScanner = null;
-      const div = document.getElementById('qr-reader');
-      if(div) div.innerHTML = '';
-    }).catch(()=>{ html5QrScanner = null; });
+    html5QrScanner.stop().then(() => { html5QrScanner.clear(); html5QrScanner = null; }).catch(()=>{ html5QrScanner = null; });
   }
 }
 
 function findAndShowOut(glp){
-  const cylinders = loadCylinders();
-  const found = cylinders.find(c => c.glp.toUpperCase() === glp.toUpperCase() && c.state === 'IN');
-  const outResult = document.getElementById('out-result');
-  outResult.innerHTML = '';
+  const arr = loadCylinders();
+  const found = arr.find(c => c.glp === glp && c.state === 'IN');
+  const root = document.getElementById('out-result');
+  root.innerHTML = '';
   if(!found){
-    outResult.innerHTML = `<div class="small">Cylinder ${glp} not found in active inventory (state = IN).</div>`;
-    return;
+    root.innerHTML = `<div class="small" style="color:var(--muted)">Cylinder ${glp} not found in active stock.</div>`; return;
   }
-  const div = document.createElement('div');
-  div.className = 'panel';
-  div.innerHTML = `
-    <div style="font-weight:700;font-size:16px">${found.glp}</div>
-    <div class="small">${found.brand} — ${found.weight.toFixed(1)} kg — ${found.status}</div>
-    <div style="margin-top:8px" id="out-qr-${escapeId(found.glp)}"></div>
-    <div style="margin-top:8px" class="actions">
-      <button id="confirm-out" class="btn btn-danger">CONFIRM SCAN OUT</button>
-      <button id="cancel-out" class="btn btn-secondary">CANCEL</button>
+  const el = document.createElement('div'); el.className = 'panel';
+  el.innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center">
+      <div class="qr-img" id="out-qr-${escapeId(glp)}" style="width:160px;height:160px"></div>
+      <div>
+        <div style="font-weight:800">${found.glp}</div>
+        <div class="small" style="margin-bottom:8px">${found.brand} • ${found.weight.toFixed(1)} kg • ${found.status}</div>
+        <div style="display:flex;gap:8px">
+          <button id="confirm-out" class="btn btn-danger">CONFIRM SCAN OUT</button>
+          <button id="cancel-out" class="btn btn-ghost">CANCEL</button>
+        </div>
+      </div>
     </div>
   `;
-  outResult.appendChild(div);
-  generateQRCodeInto(found.glp, document.getElementById(`out-qr-${escapeId(found.glp)}`));
-  document.getElementById('cancel-out').addEventListener('click', () => {
-    stopQrCameraScanner();
-    showInventory();
-  });
+  root.appendChild(el);
+  generateQRCodeInto(found.glp, document.getElementById(`out-qr-${escapeId(glp)}`));
+  document.getElementById('cancel-out').addEventListener('click', () => { stopQrCamera(); navigate('inv'); });
   document.getElementById('confirm-out').addEventListener('click', () => {
-    // mark as OUT
-    const idx = cylinders.findIndex(c => c.glp.toUpperCase() === found.glp.toUpperCase() && c.state === 'IN');
-    if(idx === -1){
-      alert('Cylinder no longer available.');
-      showInventory();
-      return;
-    }
-    cylinders[idx].state = 'OUT';
-    saveCylinders(cylinders);
-    alert('Cylinder marked as OUT.');
-    stopQrCameraScanner();
-    showInventory();
+    const idx = arr.findIndex(c => c.glp === glp && c.state === 'IN');
+    if(idx === -1){ flashMessage('Cylinder not found', {type:'error'}); navigate('inv'); return; }
+    arr[idx].state = 'OUT';
+    saveCylinders(arr);
+    flashMessage('Cylinder marked OUT', {type:'success'});
+    stopQrCamera();
+    navigate('inv');
   });
 }
 
-// Open confirm for card's scan out (from inventory)
-function openConfirmScanOut(glp){
-  // simple confirm dialog to avoid two screens
+/* ---------------- Utilities & small UI helpers ---------------- */
+function generateQRCodeInto(text, container){
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 480; canvas.height = 480;
+  new QRious({ element: canvas, value: text, size: 480, level: 'H' });
+  const img = document.createElement('img');
+  img.src = canvas.toDataURL('image/png');
+  img.style.width = container.style.width || '120px';
+  img.style.height = container.style.height || '120px';
+  img.alt = 'QR ' + text;
+  container.appendChild(img);
+}
+
+// small flash message toast
+function flashMessage(msg, {type='info', duration=1600} = {}){
+  const toast = document.createElement('div');
+  toast.style.position = 'fixed';
+  toast.style.right = '18px';
+  toast.style.top = '18px';
+  toast.style.zIndex = 9999;
+  toast.style.padding = '12px 16px';
+  toast.style.borderRadius = '10px';
+  toast.style.boxShadow = '0 6px 20px rgba(10,15,30,0.2)';
+  toast.style.color = 'white';
+  toast.style.fontWeight = 700;
+  toast.style.background = type === 'success' ? 'linear-gradient(90deg,#16a34a,#198754)' : (type === 'error' ? 'linear-gradient(90deg,#ef4444,#dc2626)' : 'linear-gradient(90deg,#0b5ed7,#0a58ca)');
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(()=>{ toast.style.transition='opacity 220ms'; toast.style.opacity='0'; setTimeout(()=>toast.remove(),260); }, duration);
+}
+
+// confirm from inventory card
+function confirmScanOut(glp){
   if(!confirm(`Confirm Scan OUT for ${glp}?`)) return;
-  // mark out
-  const cylinders = loadCylinders();
-  const idx = cylinders.findIndex(c => c.glp.toUpperCase() === glp.toUpperCase() && c.state === 'IN');
-  if(idx === -1){
-    alert('Cylinder not found or already OUT.');
-    renderCounters();
-    renderInventoryCards('all');
-    return;
-  }
-  cylinders[idx].state = 'OUT';
-  saveCylinders(cylinders);
-  alert('Cylinder marked as OUT.');
-  // refresh inventory view
-  renderCounters();
-  // refresh active tab
-  const activeTab = document.querySelector('.tab.active').dataset.tab;
-  renderInventoryCards(activeTab);
+  const arr = loadCylinders();
+  const idx = arr.findIndex(c => c.glp === glp && c.state === 'IN');
+  if(idx === -1){ flashMessage('Cylinder not found', {type:'error'}); refreshInventory(); return; }
+  arr[idx].state = 'OUT';
+  saveCylinders(arr);
+  flashMessage('Cylinder marked OUT', {type:'success'});
+  refreshInventory();
 }
 
-// Utility to create a simple panel container
-function createPanel(){
-  const p = document.createElement('div');
-  p.className = 'panel';
-  return p;
+// modal for QR enlarge
+function showQrModal(glp){
+  const backdrop = document.createElement('div'); backdrop.className = 'modal-backdrop';
+  const card = document.createElement('div'); card.className = 'modal-card';
+  card.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="font-weight:800">${glp}</div>
+    <div id="modal-qr"></div>
+    <div style="display:flex;gap:8px">
+      <button id="close-modal" class="btn btn-ghost">CLOSE</button>
+    </div>
+  </div>`;
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+  generateQRCodeInto(glp, card.querySelector('#modal-qr'));
+  card.querySelector('#close-modal').addEventListener('click', () => backdrop.remove());
+  backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) backdrop.remove(); });
 }
 
-// Before unload: stop camera (safety)
-window.addEventListener('beforeunload', () => {
-  if(html5QrScanner) {
-    try{ html5QrScanner.stop(); } catch(e){}
-  }
-});
+/* escape id helper */
+function escapeId(s){ return s.replace(/[^a-z0-9_\-]/ig, '_'); }
+
+/* Generate QR canvas into a container element (used widely) */
+function generateQRCodeInto(text, container){ /* duplicated to include again for closure safety */ 
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 480; canvas.height = 480;
+  new QRious({ element: canvas, value: text, size: 480, level: 'H' });
+  const img = document.createElement('img');
+  img.src = canvas.toDataURL('image/png');
+  img.style.width = container.style.width || '120px';
+  img.style.height = container.style.height || '120px';
+  img.alt = 'QR ' + text;
+  container.appendChild(img);
+}
+
+/* Expose refresh and scan out for other modules */
+window.refreshInventory = refreshInventory;
+window.confirmScanOut = confirmScanOut;
+window.renderScanOut = renderScanOut;
+
+/* final: ensure camera stops if navigating away */
+window.addEventListener('visibilitychange', () => { if(document.hidden) stopQrCamera(); });
+window.addEventListener('beforeunload', () => { stopQrCamera(); });
+
+/* ensure initial inventory rendered when page loaded */
+document.addEventListener('DOMContentLoaded', () => { if(document.querySelector('.tab')) refreshInventory(); });
